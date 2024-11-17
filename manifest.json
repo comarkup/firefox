@@ -1,0 +1,24 @@
+{
+  "manifest_version": 2,
+  "name": "React Code Renderer",
+  "version": "1.0",
+  "description": "Renders React code snippets from websites",
+  "permissions": [
+    "activeTab",
+    "clipboardWrite",
+    "<all_urls>"
+  ],
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["content.js"]
+    }
+  ],
+  "web_accessible_resources": [
+    "popup.html",
+    "popup.js",
+    "react.development.js",
+    "react-dom.development.js",
+    "babel.min.js"
+  ]
+}
