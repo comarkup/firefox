@@ -1,0 +1,72 @@
+/* Zaktualizowany CSS */
+.comarkup-framework-badge {
+    position: absolute;
+    top: 5px;
+    left: 5px;
+    padding: 8px 12px;
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: bold;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background-color: rgba(0, 0, 0, 0.7);
+    backdrop-filter: blur(4px);
+    transition: all 0.3s ease;
+    min-width: 140px;
+}
+
+.comarkup-framework-badge .framework-name {
+    opacity: 0.7;
+    min-width: 60px;
+}
+
+.comarkup-actions {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    justify-content: center;
+}
+
+.comarkup-action-icon {
+    width: 24px;
+    height: 24px;
+    cursor: pointer;
+    opacity: 0.7;
+    transition: opacity 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.comarkup-action-icon svg {
+    width: 20px;
+    height: 20px;
+}
+
+.comarkup-action-icon:hover {
+    opacity: 1;
+    transform: scale(1.1);
+}
+
+.comarkup-tooltip {
+    position: absolute;
+    background: rgba(0, 0, 0, 0.9);
+    color: white;
+    padding: 6px 10px;
+    border-radius: 4px;
+    font-size: 11px;
+    top: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    margin-top: 8px;
+    opacity: 0;
+    transition: opacity 0.2s;
+    pointer-events: none;
+    white-space: nowrap;
+    z-index: 1000;
+}
+
+.comarkup-action-icon:hover + .comarkup-tooltip {
+    opacity: 1;
+}

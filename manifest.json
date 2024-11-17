@@ -1,8 +1,8 @@
 {
   "manifest_version": 2,
-  "name": "React Code Renderer",
+  "name": "CoMarkup",
   "version": "1.0",
-  "description": "Renders React code snippets from websites",
+  "description": "Code renderer for multiple frameworks",
   "permissions": [
     "activeTab",
     "clipboardWrite",
@@ -10,15 +10,19 @@
   ],
   "content_scripts": [
     {
-      "matches": ["<all_urls>"],
-      "js": ["content.js"]
+      "matches": [
+        "<all_urls>"
+      ],
+      "js": [
+        "detector.js",
+        "content.js"
+      ],
+      "css": [
+        "styles.css"
+      ]
     }
   ],
   "web_accessible_resources": [
-    "popup.html",
-    "popup.js",
-    "react.development.js",
-    "react-dom.development.js",
-    "babel.min.js"
+    "popup.html"
   ]
 }

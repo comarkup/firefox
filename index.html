@@ -170,25 +170,6 @@
         return 'vanilla';
     }
 
-    function addRenderButton(codeBlock, framework) {
-        if (codeBlock.parentElement.querySelector('.render-button')) return;
-
-        const button = document.createElement('button');
-        button.textContent = 'Renderuj';
-        button.className = 'render-button';
-        button.style.position = 'absolute';
-        button.style.top = '10px';
-        button.style.right = '10px';
-
-        const label = document.createElement('span');
-        label.className = 'framework-label';
-        label.textContent = frameworkConfigs[framework].label;
-        label.style.backgroundColor = frameworkConfigs[framework].color;
-
-        button.onclick = () => renderCode(codeBlock, framework);
-        codeBlock.parentElement.appendChild(button);
-        codeBlock.parentElement.appendChild(label);
-    }
 
     // Example components for different frameworks
     function loadReactSimple() {
@@ -336,7 +317,6 @@ document.body.appendChild(counter.element);`;
         document.querySelectorAll('pre code').forEach(block => {
             if (!block.hasAttribute('data-processed')) {
                 const framework = detectFramework(block.textContent);
-                addRenderButton(block, framework);
                 block.setAttribute('data-processed', 'true');
             }
         });

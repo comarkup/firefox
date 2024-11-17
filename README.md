@@ -163,3 +163,6 @@ Wskazówki dla szybszej akceptacji:
 - Zabezpieczenie przed wielokrotnym dodawaniem przycisków
 
 
+
+
+
