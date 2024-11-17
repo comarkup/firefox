@@ -1,6 +1,23 @@
 const DEBUG = true;
 let currentCode = '';
 let popupInitialized = false;
+let popupReady = false;
+let parentTabId = null;
+
+
+
+// Zdefiniowane kroki dla debuggera
+const STEPS = {
+    INIT: 'initialization',
+    DOM_READY: 'dom-ready',
+    BUTTONS_INIT: 'buttons-init',
+    POPUP_READY: 'popup-ready',
+    CODE_RECEIVED: 'code-received',
+    CODE_PROCESSING: 'code-processing',
+    SCRIPTS_LOAD: 'scripts-loading',
+    RENDERING: 'rendering',
+    COMPLETION: 'completion'
+};
 
 // Konfiguracja frameworków
 const frameworkConfig = {
@@ -25,8 +42,6 @@ const frameworkConfig = {
     }
 };
 
-
-
 // System debugowania
 const DebugLogger = {
     steps: new Map(),
@@ -35,8 +50,17 @@ const DebugLogger = {
 
     init() {
         if (!DEBUG || this.initialized) return;
-
         this._initialize();
+        // Inicjalizuj podstawowe kroki
+        Object.values(STEPS).forEach(step => {
+            this.steps.set(step, {
+                description: step,
+                status: 'pending',
+                data: null,
+                time: Date.now()
+            });
+        });
+        this.render();
         return true;
     },
 
@@ -57,10 +81,10 @@ const DebugLogger = {
                 position: fixed;
                 top: 10px;
                 right: 10px;
-                background: rgba(0,0,0,0.8);
+                background: rgba(0,0,0,0.9);
                 color: white;
-                padding: 10px;
-                border-radius: 4px;
+                padding: 15px;
+                border-radius: 6px;
                 font-size: 12px;
                 z-index: 9999;
                 max-width: 300px;
@@ -69,8 +93,11 @@ const DebugLogger = {
             }
             .debug-step {
                 margin: 5px 0;
-                padding: 3px 6px;
-                border-radius: 3px;
+                padding: 5px;
+                border-radius: 4px;
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
             }
             .debug-step.success { background: rgba(0,255,0,0.2); }
             .debug-step.error { background: rgba(255,0,0,0.2); }
@@ -86,53 +113,23 @@ const DebugLogger = {
         this.initialized = true;
     },
 
-    log(stepId, description, status = 'pending', data = null) {
-        if (!DEBUG) return;
-
-        this.addStep(stepId, description);
-        if (status === 'success') {
-            this.success(stepId, data);
-        } else if (status === 'error') {
-            this.error(stepId, data);
-        }
-    },
-
-    addStep(id, description) {
+    updateStep(stepId, status = 'pending', data = null) {
         if (!DEBUG) return;
         if (!this.initialized) this.init();
 
-        this.steps.set(id, {
-            description,
+        const step = this.steps.get(stepId) || {
+            description: stepId,
             status: 'pending',
-            error: null,
             data: null,
             time: Date.now()
-        });
-        this.render();
-    },
-
-    _getStepDescription(stepId) {
-        const descriptions = {
-            [this.STEPS.SCRIPT_LOADED]: 'Script Loaded',
-            [this.STEPS.DOM_READY]: 'DOM Ready',
-            [this.STEPS.BUTTONS_INIT]: 'Buttons Initialized',
-            [this.STEPS.EDITOR_INIT]: 'Editor Initialized',
-            [this.STEPS.POPUP_INIT]: 'Popup Initialized',
-            [this.STEPS.CODE_RECEIVED]: 'Code Received',
-            [this.STEPS.FRAMEWORK_LOADED]: 'Framework Loaded',
-            [this.STEPS.RENDER_COMPLETE]: 'Render Complete'
         };
-        return descriptions[stepId] || stepId;
-    },
 
-    updateStep(stepId, status = 'success', data = null) {
-        const step = this.steps.get(stepId);
-        if (step) {
-            step.status = status;
-            step.data = data;
-            step.time = Date.now();
-            this.render();
-        }
+        step.status = status;
+        step.data = data;
+        step.time = Date.now();
+
+        this.steps.set(stepId, step);
+        this.render();
     },
 
     render() {
@@ -154,23 +151,11 @@ const DebugLogger = {
     }
 };
 
-
-
-
-
-
-// Funkcja debugLog
+// Funkcje pomocnicze
 function debugLog(message, status = 'pending', data = null) {
+    const timestamp = Date.now();
     console.log(`[CoMarkup Popup] ${message}`, data);
-    // Zamiast addStep używamy updateStep
-    const stepId = `step-${Date.now()}`;
-    DebugLogger.steps.set(stepId, {
-        description: message,
-        status: status,
-        data: data,
-        time: Date.now()
-    });
-    DebugLogger.render();
+    DebugLogger.updateStep(`${timestamp}-${message}`, status, data);
 }
 
 async function handleCopy() {
@@ -182,29 +167,18 @@ async function handleCopy() {
     }
 }
 
-// Funkcje pomocnicze
-function debugLog(message, data = null) {
-    console.log(`[CoMarkup Popup] ${message}`, data);
-    if (DEBUG) {
-        DebugLogger.addStep(Date.now(), message);
-        if (data) {
-            DebugLogger.success(Date.now(), data);
-        }
-    }
-}
 
 function loadScript(src) {
-    debugLog(`Loading script: ${src}`);
     return new Promise((resolve, reject) => {
         const script = document.createElement('script');
         script.src = src;
         script.onload = () => {
-            debugLog(`Script loaded: ${src}`);
+            DebugLogger.updateStep(`script-load-${src}`, 'success');
             resolve();
         };
-        script.onerror = (err) => {
-            debugLog(`Script failed to load: ${src}`, err);
-            reject(err);
+        script.onerror = (error) => {
+            DebugLogger.updateStep(`script-load-${src}`, 'error', error.message);
+            reject(new Error(`Failed to load script: ${src}`));
         };
         document.head.appendChild(script);
     });
@@ -246,18 +220,28 @@ function addLineNumbers(editor) {
     editor.insertBefore(lineNumbers, editor.firstChild);
 }
 
-function initializeEditor(code, originalContent) {
-    debugLog('Initializing editor', { codeLength: code?.length });
+async function initializeEditor(code, originalContent) {
+    if (!code) {
+        DebugLogger.updateStep('editor-init', 'error', 'No code provided');
+        throw new Error('No code provided');
+    }
+
     const editor = document.getElementById('editor');
     if (!editor) {
+        DebugLogger.updateStep('editor-init', 'error', 'Editor element not found');
         throw new Error('Editor element not found');
     }
 
-    currentCode = code;
-    const formattedCode = originalContent || formatCode(code);
-    editor.innerHTML = `<pre><code>${highlightCode(formattedCode)}</code></pre>`;
-    addLineNumbers(editor);
-    debugLog('Editor initialized');
+    try {
+        currentCode = code;
+        const formattedCode = originalContent || formatCode(code);
+        editor.innerHTML = `<pre><code>${highlightCode(formattedCode)}</code></pre>`;
+        addLineNumbers(editor);
+        DebugLogger.updateStep('editor-init', 'success');
+    } catch (error) {
+        DebugLogger.updateStep('editor-init', 'error', error.message);
+        throw error;
+    }
 }
 
 function getFrameworkWrapper(framework, code) {
@@ -309,123 +293,195 @@ function checkFrameworkAvailability(framework) {
 }
 
 
-// Inicjalizacja
-// Nasłuchiwanie na załadowanie DOM
-// Aktualizujemy inicjalizację przycisków
-document.addEventListener('DOMContentLoaded', () => {
-    // Inicjalizacja debuggera
-    DebugLogger.init();
-    debugLog('Popup script loaded');
-    debugLog('DOMContentLoaded event fired', 'success');
 
-    // Inicjalizacja przycisków
+
+function setupUI() {
     const copyBtn = document.getElementById('copyBtn');
     const closeBtn = document.getElementById('closeBtn');
+    const editor = document.getElementById('editor');
+    const root = document.getElementById('root');
 
     if (copyBtn && closeBtn) {
-        // Dodajemy obsługę kopiowania
-        copyBtn.addEventListener('click', async () => {
-            try {
-                await navigator.clipboard.writeText(currentCode);
-                debugLog('Code copied to clipboard', 'success');
-            } catch (err) {
-                debugLog('Failed to copy code', 'error', err.message);
-            }
-        });
-
-        // Obsługa zamykania
+        copyBtn.addEventListener('click', handleCopy);
         closeBtn.addEventListener('click', () => window.close());
-
-        DebugLogger.updateStep(DebugLogger.STEPS.BUTTONS_INIT, 'success');
+        DebugLogger.updateStep(STEPS.BUTTONS_INIT, 'success');
     } else {
-        DebugLogger.updateStep(DebugLogger.STEPS.BUTTONS_INIT, 'error', 'Buttons not found');
+        DebugLogger.updateStep(STEPS.BUTTONS_INIT, 'error', 'Buttons not found');
     }
 
-    // Inicjalizacja edytora
-    const editor = document.getElementById('editor');
-    if (editor) {
-        DebugLogger.updateStep(DebugLogger.STEPS.EDITOR_INIT, 'success');
-    } else {
-        debugLog('Missing required DOM elements', 'error');
+    if (!editor || !root) {
+        DebugLogger.updateStep('ui-check', 'error', 'Required elements missing');
+        return;
     }
 
-    // Powiadom content script o gotowości
-    if (window.opener) {
-        window.opener.postMessage({ type: 'POPUP_READY' }, '*');
-        debugLog('Sent POPUP_READY message', 'success');
-    } else {
-        debugLog('No opener window found', 'error');
-    }
+    // Dodaj podstawowe style do edytora i roota
+    editor.classList.add('code-editor');
+    root.classList.add('preview-container');
+}
 
-    popupInitialized = true;
-    debugLog('Popup initialized', 'success');
-});
+// Reszta funkcji bez zmian (handleCopy, loadScript, formatCode, highlightCode,
+// addLineNumbers, initializeEditor, getFrameworkWrapper, checkFrameworkAvailability)
 
 // Obsługa wiadomości
-// Nasłuchiwanie na wiadomości
 window.addEventListener('message', async (event) => {
-    debugLog('Received message', 'info', event.data);
-
     if (event.data.type === 'RENDER_CODE') {
-        const { code, framework, originalContent } = event.data.payload;
-        DebugLogger.updateStep(DebugLogger.STEPS.CODE_RECEIVED, 'success', {
-            framework,
-            codeLength: code?.length
+        DebugLogger.updateStep(STEPS.CODE_RECEIVED, 'success', {
+            hasCode: !!event.data.payload.code,
+            framework: event.data.payload.framework
         });
 
         try {
-            // Inicjalizacja edytora
-            const editor = document.getElementById('editor');
-            if (!editor) {
-                throw new Error('Editor element not found');
-            }
-
-            // Aktualizacja edytora
-            currentCode = code;
-            editor.innerHTML = `<pre><code>${highlightCode(originalContent || code)}</code></pre>`;
-            addLineNumbers(editor);
-            DebugLogger.updateStep('editor-update', 'success', 'Code loaded into editor');
-
-            // Ładowanie frameworka
-            const config = frameworkConfig[framework];
-            if (!config) {
-                throw new Error(`Unknown framework: ${framework}`);
-            }
-
-            // Ładowanie skryptów
-            for (const src of config.scripts) {
-                await loadScript(src);
-                debugLog(`Loaded script: ${src}`, 'success');
-            }
-            DebugLogger.updateStep(DebugLogger.STEPS.FRAMEWORK_LOADED, 'success');
-
-            // Renderowanie
-            const root = document.getElementById('root');
-            root.innerHTML = '<div class="preview-content"></div>';
-
-            const wrappedCode = getFrameworkWrapper(framework, code);
-            if (framework === 'react') {
-                const transformed = Babel.transform(wrappedCode, {
-                    presets: ['react']
-                }).code;
-                eval(transformed);
-            } else {
-                eval(wrappedCode);
-            }
-
-            DebugLogger.updateStep(DebugLogger.STEPS.RENDER_COMPLETE, 'success');
+            await processCode(event.data.payload);
+            DebugLogger.updateStep(STEPS.COMPLETE, 'success');
         } catch (error) {
-            debugLog('Rendering failed', 'error', error.message);
-            document.getElementById('root').innerHTML =
-                `<div class="error">Error: ${error.message}</div>`;
+            DebugLogger.updateStep(STEPS.COMPLETE, 'error', error.message);
         }
     }
 });
 
+async function processCode({ code, framework, originalContent }) {
+    try {
+        // Inicjalizacja edytora
+        DebugLogger.updateStep(STEPS.CODE_PROCESSING, 'pending');
+        await initializeEditor(code, originalContent);
+        DebugLogger.updateStep(STEPS.CODE_PROCESSING, 'success');
 
-// Inicjalizacja przy starcie skryptu
-DebugLogger.init();
+        // Ładowanie skryptów
+        const config = frameworkConfig[framework];
+        DebugLogger.updateStep(STEPS.SCRIPTS_LOAD, 'pending', {
+            framework,
+            scriptsCount: config.scripts.length
+        });
+
+        for (const src of config.scripts) {
+            try {
+                await loadScript(src);
+                DebugLogger.updateStep(`script-${src}`, 'success');
+            } catch (error) {
+                DebugLogger.updateStep(`script-${src}`, 'error', error.message);
+                throw error;
+            }
+        }
+        DebugLogger.updateStep(STEPS.SCRIPTS_LOAD, 'success');
+
+        // Renderowanie
+        DebugLogger.updateStep(STEPS.RENDERING, 'pending');
+        const root = document.getElementById('root');
+        root.innerHTML = '<div class="preview-content"></div>';
+
+        const wrappedCode = getFrameworkWrapper(framework, code);
+        if (framework === 'react') {
+            const transformed = Babel.transform(wrappedCode, { presets: ['react'] }).code;
+            eval(transformed);
+        } else {
+            eval(wrappedCode);
+        }
+
+        DebugLogger.updateStep(STEPS.RENDERING, 'success');
+        DebugLogger.updateStep(STEPS.COMPLETION, 'success');
+    } catch (error) {
+        console.error('Processing error:', error);
+        DebugLogger.updateStep(STEPS.COMPLETION, 'error', {
+            message: error.message,
+            phase: error.phase || 'unknown'
+        });
+        throw error;
+    }
+}
 
 
-// Powiadomienie o załadowaniu skryptu
-debugLog('Popup script loaded');
+function setupMessageListener() {
+    window.addEventListener('message', async (event) => {
+        console.log('[Popup] Received message:', event.data);
+        DebugLogger.updateStep('message-received', 'success', {
+            type: event.data.type
+        });
+
+        if (event.data.type === 'PING') {
+            console.log('[Popup] Received PING, sending POPUP_READY');
+            if (sendToParent({ type: 'POPUP_READY' })) {
+                DebugLogger.updateStep(STEPS.POPUP_READY, 'success');
+            } else {
+                DebugLogger.updateStep(STEPS.POPUP_READY, 'error', 'No parent window connection');
+            }
+            return;
+        }
+
+        if (event.data.type === 'INIT_POPUP') {
+            parentTabId = event.data.tabId;
+            popupInitialized = true;
+            DebugLogger.updateStep('popup-initialized', 'success', { parentTabId });
+            if (sendToParent({ type: 'POPUP_READY' })) {
+                DebugLogger.updateStep(STEPS.POPUP_READY, 'success');
+            }
+            return;
+        }
+
+        if (event.data.type === 'RENDER_CODE') {
+            console.log('[Popup] Received code to render');
+            const { code, framework, originalContent } = event.data.payload;
+
+            DebugLogger.updateStep(STEPS.CODE_RECEIVED, 'success', {
+                framework,
+                codeLength: code?.length || 0
+            });
+
+            try {
+                await processCode({ code, framework, originalContent });
+                console.log('[Popup] Code processed successfully');
+                window.opener?.postMessage({ type: 'RENDER_COMPLETE' }, '*');
+                DebugLogger.updateStep(STEPS.COMPLETION, 'success');
+            } catch (error) {
+                console.error('[Popup] Process error:', error);
+                DebugLogger.updateStep(STEPS.COMPLETION, 'error', error.message);
+                window.opener?.postMessage({
+                    type: 'RENDER_ERROR',
+                    error: error.message
+                }, '*');
+            }
+        }
+    });
+}
+
+// Inicjalizacja przy starcie
+document.addEventListener('DOMContentLoaded', async () => {
+    console.log('[Popup] DOM loaded');
+    DebugLogger.init();
+    DebugLogger.updateStep(STEPS.INIT, 'success');
+
+    setupMessageListener();
+    DebugLogger.updateStep(STEPS.DOM_READY, 'success');
+
+    // Inicjalizacja UI
+    setupUI();
+
+    // Powiadom parent window o gotowości
+    if (window.opener) {
+        console.log('[Popup] Sending initial POPUP_READY');
+        window.opener.postMessage({ type: 'POPUP_READY' }, '*');
+        DebugLogger.updateStep(STEPS.POPUP_READY, 'success');
+    } else {
+        console.log('[Popup] No opener window found');
+        DebugLogger.updateStep(STEPS.POPUP_READY, 'error', 'No opener window found');
+    }
+});
+
+// obsługa zamykania
+window.addEventListener('beforeunload', () => {
+    if (parentTabId) {
+        browser.runtime.sendMessage({
+            type: 'POPUP_CLOSED',
+            tabId: parentTabId
+        }).catch(() => {});
+    }
+});
+
+
+// Funkcja do komunikacji z głównym oknem
+function sendToParent(message) {
+    if (window.opener) {
+        window.opener.postMessage(message, '*');
+        return true;
+    }
+    return false;
+}
