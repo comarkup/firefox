@@ -24,7 +24,30 @@
         // Initialize app container
         const app = document.getElementById('app');
         
-        // SCRIPT_PLACEHOLDER
+        // Default app if no script provided
+        if (!window.hasOwnProperty('count')) {
+            let count = 0;
+            const countDisplay = document.createElement('h1');
+            countDisplay.textContent = count;
+            app.appendChild(countDisplay);
+
+            const incrementBtn = document.createElement('button');
+            incrementBtn.textContent = 'Increment';
+            incrementBtn.onclick = () => {
+                count++;
+                countDisplay.textContent = count;
+            };
+            app.appendChild(incrementBtn);
+        }
+
+        // Wait for everything to load
+        window.addEventListener('load', function() {
+            try {
+                // SCRIPT_PLACEHOLDER
+            } catch (error) {
+                console.error('Error initializing vanilla JS app:', error);
+            }
+        });
     </script>
 </body>
 </html>

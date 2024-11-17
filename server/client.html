@@ -189,40 +189,20 @@
                 content: `
                     <div class="counter">
                         <h1>Angular Counter: {{count}}</h1>
-                        <button (click)="increment()">Increment</button>
-                        <button (click)="decrement()">Decrement</button>
+                        <button ng-click="increment()">Increment</button>
+                        <button ng-click="decrement()">Decrement</button>
                     </div>
                 `,
                 script: `
-                    class AppComponent {
-                        constructor() {
-                            this.count = 0;
-                        }
-                        increment() {
-                            this.count++;
-                        }
-                        decrement() {
-                            this.count--;
-                        }
-                    }
-
-                    // Apply component decorator
-                    Component({
-                        selector: 'app-root',
-                        template: document.getElementById('app-template').textContent
-                    })(AppComponent);
-
-                    // Create and decorate module
-                    @NgModule({
-                        imports: [BrowserModule],
-                        declarations: [AppComponent],
-                        bootstrap: [AppComponent]
-                    })
-                    class AppModule {}
-
-                    // Export for bootstrapping
-                    window.AppComponent = AppComponent;
-                    window.AppModule = AppModule;
+                    $scope.count = 0;
+                    
+                    $scope.increment = function() {
+                        $scope.count++;
+                    };
+                    
+                    $scope.decrement = function() {
+                        $scope.count--;
+                    };
                 `,
                 style: `
                     .counter {

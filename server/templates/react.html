@@ -23,20 +23,36 @@
     <div id="root"></div>
     <script type="text/babel">
         // Wait for React to load
-        window.onload = function() {
-            // SCRIPT_PLACEHOLDER
-            
-            // Default render function if not provided
-            if (typeof App === 'undefined') {
-                function App() {
-                    return <div>React App</div>;
-                }
+        window.addEventListener('load', function() {
+            // Default component if none provided
+            const DefaultApp = () => {
+                const [count, setCount] = React.useState(0);
+                return (
+                    <div style={{ textAlign: 'center', padding: '20px' }}>
+                        <h1>Count: {count}</h1>
+                        <button onClick={() => setCount(count + 1)}>Increment</button>
+                        <button onClick={() => setCount(count - 1)}>Decrement</button>
+                    </div>
+                );
+            };
+
+            try {
+                // SCRIPT_PLACEHOLDER
+
+                // Use the provided App component or fall back to default
+                const AppComponent = typeof App !== 'undefined' ? App : DefaultApp;
+                
+                const rootElement = document.getElementById('root');
+                const root = ReactDOM.createRoot(rootElement);
+                root.render(React.createElement(AppComponent));
+            } catch (error) {
+                console.error('Error initializing React app:', error);
+                // Fall back to default component if there's an error
+                const rootElement = document.getElementById('root');
+                const root = ReactDOM.createRoot(rootElement);
+                root.render(React.createElement(DefaultApp));
             }
-            
-            const rootElement = document.getElementById('root');
-            const root = ReactDOM.createRoot(rootElement);
-            root.render(<App />);
-        }
+        });
     </script>
 </body>
 </html>

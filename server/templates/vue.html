@@ -2,7 +2,7 @@
 <html>
 <head>
     <title>Vue App</title>
-    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -23,11 +23,34 @@
     </div>
     <script>
         // Wait for Vue to load
-        window.onload = function() {
+        window.addEventListener('load', function() {
             const { createApp, ref, reactive } = Vue;
             
-            // SCRIPT_PLACEHOLDER
-        }
+            // Default app if no script provided
+            const defaultApp = {
+                setup() {
+                    const count = ref(0);
+                    return {
+                        count,
+                        increment: () => count.value++,
+                        decrement: () => count.value--
+                    };
+                }
+            };
+
+            try {
+                // SCRIPT_PLACEHOLDER
+
+                // If no app was created in the script, create the default one
+                if (!document.querySelector('#app').__vue_app__) {
+                    createApp(defaultApp).mount('#app');
+                }
+            } catch (error) {
+                console.error('Error initializing Vue app:', error);
+                // Fallback to default app if there's an error
+                createApp(defaultApp).mount('#app');
+            }
+        });
     </script>
 </body>
 </html>

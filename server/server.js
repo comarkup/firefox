@@ -13,8 +13,13 @@ app.use(express.json());
 // Serve static files from the server directory
 app.use(express.static(__dirname));
 
-// Serve framework files from the parent directory
-app.use('/frameworks', express.static(path.join(__dirname, '..', 'frameworks')));
+// Framework-specific wait times (in milliseconds)
+const FRAMEWORK_WAIT_TIMES = {
+    angular: 5000,
+    react: 3000,
+    vue: 2000,
+    vanilla: 1000
+};
 
 // Framework templates
 const TEMPLATES = {
@@ -36,10 +41,26 @@ async function loadTemplate(framework) {
 
 function injectCode(template, { content, script, style }) {
     try {
-        return template
-            .replace('<!-- CONTENT_PLACEHOLDER -->', content || '')
-            .replace('// SCRIPT_PLACEHOLDER', script || '')
-            .replace('<!-- STYLE_PLACEHOLDER -->', style ? `<style>${style}</style>` : '');
+        let modifiedTemplate = template;
+
+        // Inject content if provided
+        if (content) {
+            modifiedTemplate = modifiedTemplate.replace('<!-- CONTENT_PLACEHOLDER -->', content);
+        }
+
+        // Inject script if provided
+        if (script) {
+            // Remove any script tags from the provided script
+            const cleanScript = script.replace(/<\/?script[^>]*>/g, '');
+            modifiedTemplate = modifiedTemplate.replace('// SCRIPT_PLACEHOLDER', cleanScript);
+        }
+
+        // Inject style if provided
+        if (style) {
+            modifiedTemplate = modifiedTemplate.replace('<!-- STYLE_PLACEHOLDER -->', `<style>${style}</style>`);
+        }
+
+        return modifiedTemplate;
     } catch (error) {
         console.error('Error injecting code:', error);
         throw new Error('Failed to inject code into template');
@@ -64,7 +85,12 @@ app.post('/render/:framework', async (req, res) => {
         // Launch browser and render
         browser = await puppeteer.launch({
             headless: "new",
-            args: ['--no-sandbox', '--disable-setuid-sandbox']
+            args: [
+                '--no-sandbox',
+                '--disable-setuid-sandbox',
+                '--disable-web-security',
+                '--disable-features=IsolateOrigins,site-per-process'
+            ]
         });
         const page = await browser.newPage();
         
@@ -89,8 +115,19 @@ app.post('/render/:framework', async (req, res) => {
             timeout: 30000
         });
         
-        // Wait for framework initialization and any animations
-        await page.waitForTimeout(3000);
+        // Wait for framework initialization
+        const waitTime = FRAMEWORK_WAIT_TIMES[framework.toLowerCase()] || 2000;
+        await page.waitForTimeout(waitTime);
+
+        // Wait for any remaining animations or transitions
+        await page.evaluate(() => {
+            return new Promise((resolve) => {
+                // Wait for any remaining animations
+                requestAnimationFrame(() => {
+                    setTimeout(resolve, 1000);
+                });
+            });
+        });
         
         // Take screenshot
         const timestamp = Date.now();

@@ -2,14 +2,13 @@
 <html>
 <head>
     <title>Angular App</title>
-    <script src="https://unpkg.com/@angular/core@16/bundles/core.umd.js"></script>
-    <script src="https://unpkg.com/@angular/common@16/bundles/common.umd.js"></script>
-    <script src="https://unpkg.com/@angular/platform-browser-dynamic@16/bundles/platform-browser-dynamic.umd.js"></script>
-    <script src="https://unpkg.com/@angular/platform-browser@16/bundles/platform-browser.umd.js"></script>
-    <script src="https://unpkg.com/@angular/compiler@16/bundles/compiler.umd.js"></script>
-    <script src="https://unpkg.com/zone.js"></script>
-    <script src="https://unpkg.com/reflect-metadata"></script>
-    <script src="https://unpkg.com/rxjs/bundles/rxjs.umd.js"></script>
+    <script>
+        // Polyfill for older browsers
+        if (typeof window.global === 'undefined') {
+            window.global = window;
+        }
+    </script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/angular.js/1.8.3/angular.min.js"></script>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -17,80 +16,51 @@
             padding: 20px;
             background-color: #f0f0f0;
         }
-        app-root {
-            display: block;
+        .counter {
             max-width: 800px;
             margin: 0 auto;
+            text-align: center;
+            padding: 20px;
+        }
+        button {
+            margin: 0 5px;
+            padding: 8px 16px;
+            background: #dd1b16;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        button:hover {
+            background: #c41810;
         }
     </style>
     <!-- STYLE_PLACEHOLDER -->
-    <script type="text/ng-template" id="app-template">
-        <!-- CONTENT_PLACEHOLDER -->
-    </script>
 </head>
-<body>
-    <app-root></app-root>
+<body ng-app="counterApp">
+    <div class="counter" ng-controller="CounterController">
+        <!-- CONTENT_PLACEHOLDER -->
+        <div ng-if="!customContent">
+            <h1>Angular Counter: {{count}}</h1>
+            <button ng-click="increment()">+</button>
+            <button ng-click="decrement()">-</button>
+        </div>
+    </div>
     <script>
-        // Wait for Angular dependencies to load
-        window.onload = function() {
-            // Initialize Angular modules
-            const { 
-                Component, 
-                NgModule, 
-                enableProdMode 
-            } = ng.core;
-            
-            const { 
-                BrowserModule 
-            } = ng.platformBrowser;
-            
-            const { 
-                platformBrowserDynamic 
-            } = ng.platformBrowserDynamic;
-
-            // Enable production mode
-            enableProdMode();
-
-            // SCRIPT_PLACEHOLDER
-
-            // Default component if not defined
-            if (typeof AppComponent === 'undefined') {
-                class AppComponent {
-                    constructor() {
-                        this.count = 0;
-                    }
-                    increment() {
-                        this.count++;
-                    }
-                    decrement() {
-                        this.count--;
-                    }
-                }
+        angular.module('counterApp', [])
+            .controller('CounterController', function($scope) {
+                $scope.count = 0;
                 
-                Component({
-                    selector: 'app-root',
-                    template: document.getElementById('app-template').textContent
-                })(AppComponent);
+                $scope.increment = function() {
+                    $scope.count++;
+                };
+                
+                $scope.decrement = function() {
+                    $scope.count--;
+                };
 
-                window.AppComponent = AppComponent;
-            }
-
-            // Default module if not defined
-            if (typeof AppModule === 'undefined') {
-                @NgModule({
-                    imports: [BrowserModule],
-                    declarations: [AppComponent],
-                    bootstrap: [AppComponent]
-                })
-                class AppModule {}
-                window.AppModule = AppModule;
-            }
-
-            // Bootstrap the application
-            platformBrowserDynamic()
-                .bootstrapModule(AppModule)
-                .catch(err => console.error('Angular bootstrap error:', err));
-        }
+                // SCRIPT_PLACEHOLDER
+            });
     </script>
 </body>
 </html>
