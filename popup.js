@@ -331,15 +331,118 @@ function getFrameworkWrapper(framework, code) {
                 ReactDOM.render(React.createElement(App), document.querySelector('.preview-content'));
             `;
         case 'vue':
+            // Simplified Vue handling
+            const safeCode = JSON.stringify(code.trim() || '<div>Empty template</div>');
+
             return `
-                const app = Vue.createApp({
-                    template: \`
-                        <div>
-                            ${code}
-                        </div>
-                    \`
-                });
-                app.mount('.preview-content');
+                (() => {
+                    const app = Vue.createApp({
+                        template: ${safeCode},
+                        data() {
+                            return { message: 'Vue App' }
+                        }
+                    });
+                    app.mount('.preview-content');
+                })();
+            `;
+        case 'vanilla':
+            return `
+                (function() {
+                    const container = document.querySelector('.preview-content');
+                    ${code}
+                })();
+            `;
+        default:
+            return code;
+    }
+}
+
+function getFrameworkWrapper2(framework, code) {
+    const config = FrameworkDetector.getFrameworkConfig(framework);
+
+    switch (framework) {
+        case 'react':
+            return `
+                const App = () => {
+                    try {
+                        const Welcome = () => {
+                            return <div>Hello from React!</div>;
+                        };
+                        return <Welcome />;
+                    } catch (error) {
+                        return React.createElement('div', 
+                            { style: { color: 'red' } },
+                            'Error: ' + error.message
+                        );
+                    }
+                };
+                ReactDOM.render(React.createElement(App), document.querySelector('.preview-content'));
+            `;
+        case 'vue':
+            // Create a safer way to handle the template
+            const processedCode = code
+                .replace(/`/g, "'")
+                .replace(/\${/g, "\\${")
+                .replace(/\\/g, "\\\\")
+                .replace(/<template>/gi, '')
+                .replace(/<\/template>/gi, '')
+                .trim();
+
+            return `
+                (function() {
+                    try {
+                        // Add Vue-specific styles
+                        const style = document.createElement('style');
+                        style.textContent = '.vue-container { padding: 20px; } .vue-error { color: red; padding: 20px; }';
+                        document.head.appendChild(style);
+
+                        // Create Vue app with error handling
+                        const app = Vue.createApp({
+                            data() {
+                                return {
+                                    error: null
+                                };
+                            },
+                            render() {
+                                try {
+                                    const template = '${processedCode}';
+                                    if (this.error) {
+                                        return Vue.h('div', { class: 'vue-error' }, this.error);
+                                    }
+                                    return Vue.h('div', { class: 'vue-container' }, template);
+                                } catch (err) {
+                                    return Vue.h('div', { class: 'vue-error' }, 'Render Error: ' + err.message);
+                                }
+                            },
+                            errorCaptured(err) {
+                                console.error('[Vue Error Captured]:', err);
+                                this.error = err.message;
+                                return false;
+                            }
+                        });
+
+                        // Global error handler
+                        app.config.errorHandler = function(err, vm, info) {
+                            console.error('[Vue Error]:', err);
+                            const container = document.querySelector('.preview-content');
+                            if (container) {
+                                container.innerHTML = '<div class="vue-error">Error: ' + err.message + '</div>';
+                            }
+                        };
+
+                        // Mount the app
+                        app.mount('.preview-content');
+                        console.log('[Vue] App mounted successfully');
+
+                    } catch (error) {
+                        console.error('[Vue Mount Error]:', error);
+                        const container = document.querySelector('.preview-content');
+                        if (container) {
+                            container.innerHTML = '<div class="vue-error">Mount Error: ' + error.message + '</div>';
+                        }
+                        throw error;
+                    }
+                })();
             `;
         case 'vanilla':
             return `
@@ -381,6 +484,8 @@ function setupUI() {
 async function processCode({ code, framework, originalContent }) {
     try {
         console.log('[Popup] Processing code for framework:', framework);
+        console.log('[Popup] Raw code:', code);
+
         DebugLogger.updateStep(STEPS.CODE_PROCESSING, 'pending');
         currentFramework = framework;
         currentCode = code;
@@ -419,7 +524,7 @@ async function processCode({ code, framework, originalContent }) {
         root.innerHTML = '<div class="preview-content"></div>';
 
         const wrappedCode = getFrameworkWrapper(framework, code);
-        console.log('[Popup] Wrapped code ready for execution');
+        console.log('[Popup] Wrapped code:', wrappedCode);
 
         if (framework === 'react') {
             console.log('[Popup] Transforming React code with Babel');
@@ -437,8 +542,11 @@ async function processCode({ code, framework, originalContent }) {
         browser.runtime.sendMessage({ type: 'RENDER_COMPLETE' });
     } catch (error) {
         console.error('[Popup] Processing error:', error);
+        console.error('[Popup] Error stack:', error.stack);
+
         DebugLogger.updateStep(STEPS.COMPLETION, 'error', {
             message: error.message,
+            stack: error.stack,
             phase: error.phase || 'unknown'
         });
 
@@ -448,6 +556,7 @@ async function processCode({ code, framework, originalContent }) {
             <div class="preview-content">
                 <div style="color: red; padding: 20px;">
                     Error: ${error.message}
+                    <pre style="font-size: 12px; margin-top: 10px;">${error.stack}</pre>
                 </div>
             </div>
         `;
@@ -459,6 +568,9 @@ async function processCode({ code, framework, originalContent }) {
         });
     }
 }
+
+
+
 
 // Initialize message handling
 browser.runtime.onMessage.addListener((message) => {
@@ -502,6 +614,7 @@ browser.runtime.onMessage.addListener((message) => {
         }
     })());
 });
+
 
 // Initialize on DOM load
 document.addEventListener('DOMContentLoaded', () => {
