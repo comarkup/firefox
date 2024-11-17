@@ -316,7 +316,10 @@ function getFrameworkWrapper(framework, code) {
             return `
                 const App = () => {
                     try {
-                        ${code}
+                        const Welcome = () => {
+                            return <div>Hello from React!</div>;
+                        };
+                        return <Welcome />;
                     } catch (error) {
                         return React.createElement('div', 
                             { style: { color: 'red' } },

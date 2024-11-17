@@ -3,392 +3,225 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CoMarkup Framework Demo</title>
+    <title>CoMarkup Test Page</title>
     <style>
         body {
-            font-family: Arial, sans-serif;
-            max-width: 900px;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+            line-height: 1.6;
+            max-width: 1200px;
             margin: 0 auto;
             padding: 20px;
-            background: #f5f7fb;
+            background: #f5f5f5;
         }
-        .container {
+
+        h1, h2 {
+            color: #333;
+        }
+
+        .example-section {
             background: white;
-            padding: 20px;
             border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
             box-shadow: 0 2px 4px rgba(0,0,0,0.1);
         }
-        .framework-buttons {
-            display: flex;
-            gap: 10px;
-            flex-wrap: wrap;
-            margin-bottom: 20px;
-            padding: 10px;
-            background: #f8fafc;
-            border-radius: 8px;
-        }
-        .framework-group {
-            display: flex;
-            gap: 5px;
-            align-items: center;
-            padding-right: 15px;
-            border-right: 2px solid #e2e8f0;
-        }
-        .framework-group:last-child {
-            border-right: none;
-        }
-        button {
-            padding: 8px 16px;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
-            font-size: 14px;
-            transition: all 0.3s;
-        }
-        .btn-react {
-            background: #61dafb;
-            color: #000;
-        }
-        .btn-vue {
-            background: #42b883;
-            color: white;
-        }
-        .btn-angular {
-            background: #dd1b16;
-            color: white;
-        }
-        .btn-svelte {
-            background: #ff3e00;
-            color: white;
-        }
-        .btn-vanilla {
-            background: #f7df1e;
-            color: #000;
-        }
+
         pre {
-            background: #1e293b;
-            color: #e2e8f0;
-            padding: 15px;
+            background: #1e1e1e;
+            color: #d4d4d4;
+            padding: 20px;
             border-radius: 6px;
-            overflow-x: auto;
+            overflow: auto;
             position: relative;
-            margin: 20px 0;
         }
+
         code {
-            font-family: monospace;
-            white-space: pre-wrap;
+            font-family: 'Fira Code', 'Consolas', monospace;
+            font-size: 14px;
+            line-height: 1.5;
         }
-        .framework-label {
-            position: absolute;
-            top: 10px;
-            left: 10px;
-            padding: 3px 8px;
-            border-radius: 4px;
-            font-size: 12px;
-            font-weight: bold;
+
+        .description {
+            color: #666;
+            margin-bottom: 15px;
         }
     </style>
 </head>
 <body>
-<div class="container">
-    <div class="framework-buttons">
-        <div class="framework-group">
-            <h4>React:</h4>
-            <button onclick="loadReactSimple()" class="btn-react">Simple</button>
-            <button onclick="loadReactHooks()" class="btn-react">Hooks</button>
-        </div>
-        <div class="framework-group">
-            <h4>Vue:</h4>
-            <button onclick="loadVueSimple()" class="btn-vue">Simple</button>
-            <button onclick="loadVueComposition()" class="btn-vue">Composition</button>
-        </div>
-        <div class="framework-group">
-            <h4>Angular:</h4>
-            <button onclick="loadAngularComponent()" class="btn-angular">Component</button>
-            <button onclick="loadAngularService()" class="btn-angular">Service</button>
-        </div>
-        <div class="framework-group">
-            <h4>Svelte:</h4>
-            <button onclick="loadSvelteSimple()" class="btn-svelte">Simple</button>
-            <button onclick="loadSvelteStore()" class="btn-svelte">Store</button>
-        </div>
-        <div class="framework-group">
-            <h4>Vanilla JS:</h4>
-            <button onclick="loadVanillaJS()" class="btn-vanilla">DOM</button>
-            <button onclick="loadVanillaClass()" class="btn-vanilla">Class</button>
-        </div>
-    </div>
-    <div id="content"></div>
-</div>
+    <h1>CoMarkup Framework Detection Test</h1>
+    <p class="description">
+        This page contains code examples for different frameworks to test the CoMarkup extension's detection and preview functionality.
+    </p>
 
-<script>
-    // Framework detection and rendering logic
-    const frameworkConfigs = {
-        react: {
-            label: 'React',
-            color: '#61dafb',
-            scripts: [
-                'https://unpkg.com/react@17/umd/react.development.js',
-                'https://unpkg.com/react-dom@17/umd/react-dom.development.js',
-                'https://unpkg.com/babel-standalone@6/babel.min.js'
-            ]
-        },
-        vue: {
-            label: 'Vue.js',
-            color: '#42b883',
-            scripts: [
-                'https://unpkg.com/vue@3/dist/vue.global.js'
-            ]
-        },
-        angular: {
-            label: 'Angular',
-            color: '#dd1b16',
-            scripts: [
-                'https://unpkg.com/@angular/core@12',
-                'https://unpkg.com/@angular/platform-browser-dynamic@12'
-            ]
-        },
-        svelte: {
-            label: 'Svelte',
-            color: '#ff3e00',
-            scripts: [
-                'https://unpkg.com/svelte@3'
-            ]
-        },
-        vanilla: {
-            label: 'Vanilla JS',
-            color: '#f7df1e',
-            scripts: []
-        }
-    };
-
-    function detectFramework(code) {
-        if (code.includes('React') || code.includes('jsx')) return 'react';
-        if (code.includes('Vue') || code.includes('createApp')) return 'vue';
-        if (code.includes('@Component') || code.includes('@angular')) return 'angular';
-        if (code.includes('svelte')) return 'svelte';
-        return 'vanilla';
-    }
-
-
-    // Example components for different frameworks
-    function loadReactSimple() {
-        const code =
-            `const Welcome = () => {
-    return <h1>Hello from React!</h1>;
-};
-
-return <Welcome />;`;
-        document.getElementById('content').innerHTML = `<pre><code>${code}</code></pre>`;
-        checkForNewCodeBlocks();
-    }
-
-    function loadReactHooks() {
-        const code =
-            `const Counter = () => {
+    <div class="example-section">
+        <h2>React Component Example</h2>
+        <p class="description">A simple React component demonstrating state management and event handling.</p>
+        <pre><code>function Counter() {
     const [count, setCount] = React.useState(0);
-
+    
     return (
-        <div>
-            <h2>Count: {count}</h2>
-            <button onClick={() => setCount(count + 1)}>
+        &lt;div style={{ textAlign: 'center', padding: '20px' }}&gt;
+            &lt;h2&gt;Count: {count}&lt;/h2&gt;
+            &lt;button 
+                onClick={() => setCount(count + 1)}
+                style={{
+                    padding: '10px 20px',
+                    fontSize: '16px',
+                    background: '#007bff',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '4px',
+                    cursor: 'pointer'
+                }}
+            &gt;
                 Increment
-            </button>
-        </div>
+            &lt;/button&gt;
+        &lt;/div&gt;
     );
-};
+}</code></pre>
+    </div>
 
-return <Counter />;`;
-        document.getElementById('content').innerHTML = `<pre><code>${code}</code></pre>`;
-        checkForNewCodeBlocks();
-    }
-
-    function loadVueSimple() {
-        const code =
-            `const app = Vue.createApp({
-    template: \`
-        <div>
-            <h1>{{ message }}</h1>
-            <button @click="reverse">Reverse</button>
-        </div>
-    \`,
-    data() {
-        return {
-            message: 'Hello from Vue!'
-        }
-    },
-    methods: {
-        reverse() {
-            this.message = this.message.split('').reverse().join('')
-        }
-    }
-});`;
-        document.getElementById('content').innerHTML = `<pre><code>${code}</code></pre>`;
-        checkForNewCodeBlocks();
-    }
-
-    function loadVanillaJS() {
-        const code =
-            `// Pure JavaScript DOM Manipulation
-const app = {
-    init() {
-        const root = document.createElement('div');
-        const title = document.createElement('h1');
-        title.textContent = 'Hello from Vanilla JS!';
-
-        const button = document.createElement('button');
-        button.textContent = 'Click me';
-        button.onclick = () => {
-            title.style.color = this.getRandomColor();
+    <div class="example-section">
+        <h2>Vue.js Component Example</h2>
+        <p class="description">A Vue.js component showing reactive data and methods.</p>
+        <pre><code>const app = Vue.createApp({
+    setup() {
+        const message = Vue.ref('Hello Vue!');
+        const count = Vue.ref(0);
+        
+        const increment = () => {
+            count.value++;
         };
-
-        root.appendChild(title);
-        root.appendChild(button);
-        return root;
-    },
-
-    getRandomColor() {
-        return '#' + Math.floor(Math.random()*16777215).toString(16);
+        
+        return () => Vue.h('div', { style: { textAlign: 'center', padding: '20px' } }, [
+            Vue.h('h2', message.value),
+            Vue.h('p', `Count: ${count.value}`),
+            Vue.h('button', {
+                onClick: increment,
+                style: {
+                    padding: '10px 20px',
+                    fontSize: '16px',
+                    background: '#42b883',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '4px',
+                    cursor: 'pointer'
+                }
+            }, 'Increment')
+        ]);
     }
-};
+});</code></pre>
+    </div>
 
-// Initialize the app
-app.init();`;
-        document.getElementById('content').innerHTML = `<pre><code>${code}</code></pre>`;
-        checkForNewCodeBlocks();
+    <div class="example-section">
+        <h2>Vanilla JavaScript Example</h2>
+        <p class="description">A pure JavaScript example showing DOM manipulation and event handling.</p>
+        <pre><code>const container = document.createElement('div');
+container.style.textAlign = 'center';
+container.style.padding = '20px';
+
+const heading = document.createElement('h2');
+heading.textContent = 'Vanilla JS Counter';
+container.appendChild(heading);
+
+const countDisplay = document.createElement('p');
+let count = 0;
+countDisplay.textContent = `Count: ${count}`;
+container.appendChild(countDisplay);
+
+const button = document.createElement('button');
+button.textContent = 'Increment';
+button.style.cssText = `
+    padding: 10px 20px;
+    font-size: 16px;
+    background: #f7df1e;
+    color: black;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+`;
+
+button.addEventListener('click', () => {
+    count++;
+    countDisplay.textContent = `Count: ${count}`;
+});
+
+container.appendChild(button);</code></pre>
+    </div>
+
+    <div class="example-section">
+        <h2>Svelte Component Example</h2>
+        <p class="description">A Svelte component demonstrating reactive declarations and event handling.</p>
+        <pre><code>&lt;script&gt;
+    let count = 0;
+    
+    function handleClick() {
+        count += 1;
     }
+&lt;/script&gt;
 
-    function loadVanillaClass() {
-        const code =
-            `class Counter {
-    constructor(initialCount = 0) {
-        this.count = initialCount;
-        this.element = this.render();
+&lt;div style="text-align: center; padding: 20px;"&gt;
+    &lt;h2&gt;Count: {count}&lt;/h2&gt;
+    
+    &lt;button on:click={handleClick}&gt;
+        Increment
+    &lt;/button&gt;
+&lt;/div&gt;
+
+&lt;style&gt;
+    button {
+        padding: 10px 20px;
+        font-size: 16px;
+        background: #ff3e00;
+        color: white;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
     }
+    
+    button:hover {
+        background: #ff2d00;
+    }
+&lt;/style&gt;</code></pre>
+    </div>
 
+    <div class="example-section">
+        <h2>Angular Component Example</h2>
+        <p class="description">An Angular component showing data binding and event handling.</p>
+        <pre><code>@Component({
+    selector: 'app-counter',
+    template: `
+        &lt;div style="text-align: center; padding: 20px;"&gt;
+            &lt;h2&gt;Count: {{ count }}&lt;/h2&gt;
+            &lt;button (click)="increment()"&gt;
+                Increment
+            &lt;/button&gt;
+        &lt;/div&gt;
+    `,
+    styles: [`
+        button {
+            padding: 10px 20px;
+            font-size: 16px;
+            background: #dd1b16;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+    `]
+})
+export class CounterComponent {
+    count = 0;
+    
     increment() {
         this.count++;
-        this.update();
     }
+}</code></pre>
+    </div>
 
-    update() {
-        this.countDisplay.textContent = this.count;
-    }
-
-    render() {
-        const container = document.createElement('div');
-
-        this.countDisplay = document.createElement('h2');
-        this.countDisplay.textContent = this.count;
-
-        const button = document.createElement('button');
-        button.textContent = 'Increment';
-        button.onclick = () => this.increment();
-
-        container.appendChild(this.countDisplay);
-        container.appendChild(button);
-
-        return container;
-    }
-}
-
-// Create and mount the counter
-const counter = new Counter();
-document.body.appendChild(counter.element);`;
-        document.getElementById('content').innerHTML = `<pre><code>${code}</code></pre>`;
-        checkForNewCodeBlocks();
-    }
-
-    // Observer for new code blocks
-    const observer = new MutationObserver((mutations) => {
-        mutations.forEach((mutation) => {
-            if (mutation.addedNodes.length) {
-                checkForNewCodeBlocks();
-            }
-        });
-    });
-
-    observer.observe(document.body, {
-        childList: true,
-        subtree: true
-    });
-
-    function checkForNewCodeBlocks() {
-        document.querySelectorAll('pre code').forEach(block => {
-            if (!block.hasAttribute('data-processed')) {
-                const framework = detectFramework(block.textContent);
-                block.setAttribute('data-processed', 'true');
-            }
-        });
-    }
-
-    function renderCode(codeBlock, framework) {
-        const code = codeBlock.textContent;
-        const config = frameworkConfigs[framework];
-        const popup = window.open('', 'Preview', 'width=800,height=600');
-
-        const scripts = config.scripts
-            .map(src => `<script src="${src}"><\/script>`)
-            .join('\n');
-
-        const popupContent = `
-                <!DOCTYPE html>
-                <html>
-                <head>
-                    <title>${config.label} Preview</title>
-                    ${scripts}
-                    <style>
-                        body {
-                            font-family: Arial, sans-serif;
-                            padding: 20px;
-                            background: #f5f7fb;
-                        }
-                        #root {
-                            background: white;
-                            padding: 20px;
-                            border-radius: 8px;
-                            min-height: 100px;
-                        }
-                        button {
-                            padding: 8px 16px;
-                            border: none;
-                            border-radius: 4px;
-                            background: ${config.color};
-                            color: white;
-                            cursor: pointer;
-                            margin: 5px;
-                        }
-                    </style>
-                </head>
-                <body>
-                    <div id="root"></div>
-                    <div style="margin-top: 20px;">
-                        <button onclick="copyToClipboard()">Copy HTML</button>
-                        <button onclick="window.close()">Close</button>
-                    </div>
-
-                    <script type="${framework === 'react' ? 'text/babel' : 'text/javascript'}">
-                        ${code}
-                    <\/script>
-
-                    <script>
-                        function copyToClipboard() {
-                            const html = document.getElementById('root').innerHTML;
-                            navigator.clipboard.writeText(html)
-                                .then(() => alert('Copied!'))
-                                .catch(err => alert('Error: ' + err));
-                        }
-                    <\/script>
-                </body>
-                </html>
-            `;
-
-        popup.document.write(popupContent);
-        popup.document.close();
-    }
-
-    // Initial check
-    checkForNewCodeBlocks();
-</script>
+    <script>
+        // Add some spacing at the bottom for better scrolling
+        document.body.style.paddingBottom = '100px';
+    </script>
 </body>
 </html>

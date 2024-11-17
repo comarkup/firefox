@@ -358,7 +358,28 @@ class CoMarkupRenderer {
         }
     }
 
-    // ... (keep all other existing methods)
+
+    async copyToClipboard(code) {
+        try {
+            await navigator.clipboard.writeText(code);
+            this.showNotification('Code copied to clipboard!');
+        } catch (err) {
+            this.showNotification('Failed to copy code', 'error');
+        }
+    }
+
+    showNotification(message, type = 'success') {
+        const notification = document.createElement('div');
+        notification.className = `comarkup-notification ${type}`;
+        notification.textContent = message;
+        document.body.appendChild(notification);
+
+        setTimeout(() => notification.classList.add('show'), 10);
+        setTimeout(() => {
+            notification.classList.remove('show');
+            setTimeout(() => notification.remove(), 300);
+        }, 2000);
+    }
 
     async renderCode(code, framework) {
         console.log('[CoMarkup] Starting render process', { framework });
