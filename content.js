@@ -4,7 +4,6 @@ class CoMarkupRenderer {
         this.processExistingCodeBlocks();
     }
 
-
     setupMutationObserver() {
         const observer = new MutationObserver((mutations) => {
             mutations.forEach((mutation) => {
@@ -37,104 +36,71 @@ class CoMarkupRenderer {
 
     enhanceCodeBlock(block) {
         const code = block.textContent;
-        const framework = FrameworkDetector.detect(code);
-        const config = FrameworkDetector.frameworks[framework];
+        const framework = this.detectFramework(code);
 
-        this.addFrameworkBadge(block, config);
+        this.addFrameworkBadge(block, framework);
         block.setAttribute('data-comarkup-processed', 'true');
     }
 
-    addFrameworkBadge(block, config) {
+    detectFramework(code) {
+        if (code.includes('React') || code.includes('jsx')) return 'react';
+        if (code.includes('Vue') || code.includes('createApp')) return 'vue';
+        return 'vanilla';
+    }
+
+    addFrameworkBadge(block, framework) {
         const badge = document.createElement('div');
         badge.className = 'comarkup-framework-badge';
 
-        // Framework name
-        const nameSpan = document.createElement('span');
-        nameSpan.className = 'framework-name';
-        nameSpan.textContent = config.name;
-        nameSpan.style.color = config.color;
+        const config = {
+            react: {name: 'React', color: '#61dafb'},
+            vue: {name: 'Vue', color: '#42b883'},
+            vanilla: {name: 'JavaScript', color: '#f7df1e'}
+        }[framework];
 
-        // Actions container
-        const actions = document.createElement('div');
-        actions.className = 'comarkup-actions';
+        badge.innerHTML = `
+            <span class="framework-name" style="color: ${config.color}">${config.name}</span>
+            <div class="comarkup-actions">
+                ${this.createActionIcon('render', config.color)}
+                ${this.createActionIcon('copy', config.color)}
+            </div>
+        `;
 
-        // Render icon - większe wymiary
-        const renderIcon = this.createActionIcon({
-            action: 'render',
-            tooltip: 'Render Preview',
-            svg: `
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="${config.color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M5 3l14 9-14 9V3z"/>
-            </svg>
-        `,
-            onClick: () => this.renderCode(block.textContent, config.framework)
-        });
+        // Event listeners dla ikon
+        const renderIcon = badge.querySelector('[data-action="render"]');
+        const copyIcon = badge.querySelector('[data-action="copy"]');
 
-        // Publish icon - większe wymiary
-        const publishIcon = this.createActionIcon({
-            action: 'publish',
-            tooltip: 'Publish',
-            svg: `
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="${config.color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M21 2H3v16h5v4l4-4h5l4-4V2zM10 12h4"/>
-                <path d="M12 8v4"/>
-            </svg>
-        `,
-            onClick: () => this.publishCode(block.textContent, config.framework)
-        });
-
-        // Copy icon - większe wymiary
-        const copyIcon = this.createActionIcon({
-            action: 'copy',
-            tooltip: 'Copy Code',
-            svg: `
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="${config.color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
-                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
-            </svg>
-        `,
-            onClick: () => this.copyToClipboard(block.textContent)
-        });
-
-        // Dodaj marginesy i padding dla lepszego wyśrodkowania
-        renderIcon.style.padding = '4px';
-        publishIcon.style.padding = '4px';
-        copyIcon.style.padding = '4px';
-
-        actions.appendChild(renderIcon);
-        actions.appendChild(publishIcon);
-        actions.appendChild(copyIcon);
-
-        badge.appendChild(nameSpan);
-        badge.appendChild(actions);
+        renderIcon.addEventListener('click', () => this.renderCode(block.textContent, framework));
+        copyIcon.addEventListener('click', () => this.copyToClipboard(block.textContent));
 
         block.parentElement.appendChild(badge);
     }
 
-// Zaktualizowana metoda tworzenia pojedynczej ikony
-    createActionIcon({action, tooltip, svg, onClick}) {
-        const container = document.createElement('div');
-        container.style.position = 'relative';
-        container.style.display = 'flex';
-        container.style.alignItems = 'center';
-        container.style.justifyContent = 'center';
+    createActionIcon(action, color) {
+        const icons = {
+            render: `
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="${color}" 
+                     stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M5 3l14 9-14 9V3z"/>
+                </svg>
+            `,
+            copy: `
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="${color}"
+                     stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
+                    <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+                </svg>
+            `
+        };
 
-        const icon = document.createElement('div');
-        icon.className = 'comarkup-action-icon';
-        icon.innerHTML = svg;
-        icon.addEventListener('click', onClick);
-
-        const tooltipDiv = document.createElement('div');
-        tooltipDiv.className = 'comarkup-tooltip';
-        tooltipDiv.textContent = tooltip;
-
-        container.appendChild(icon);
-        container.appendChild(tooltipDiv);
-
-        return container;
+        return `
+            <div class="comarkup-action-icon" data-action="${action}">
+                ${icons[action]}
+                <div class="comarkup-tooltip">${action === 'render' ? 'Preview' : 'Copy'}</div>
+            </div>
+        `;
     }
 
-// Metoda do kopiowania kodu
     async copyToClipboard(code) {
         try {
             await navigator.clipboard.writeText(code);
@@ -144,134 +110,98 @@ class CoMarkupRenderer {
         }
     }
 
-// Metoda do pokazywania notyfikacji
     showNotification(message, type = 'success') {
         const notification = document.createElement('div');
-        notification.style.cssText = `
-        position: fixed;
-        bottom: 20px;
-        right: 20px;
-        padding: 10px 20px;
-        border-radius: 4px;
-        background: ${type === 'success' ? 'rgba(0, 200, 0, 0.8)' : 'rgba(255, 0, 0, 0.8)'};
-        color: white;
-        font-size: 14px;
-        z-index: 10000;
-        transition: opacity 0.3s;
-    `;
+        notification.className = `comarkup-notification ${type}`;
         notification.textContent = message;
-
         document.body.appendChild(notification);
 
+        setTimeout(() => notification.classList.add('show'), 10);
         setTimeout(() => {
-            notification.style.opacity = '0';
+            notification.classList.remove('show');
             setTimeout(() => notification.remove(), 300);
         }, 2000);
     }
 
-
-    checkFrameworkAvailability(framework) {
-        const checks = {
-            'react': () => typeof React !== 'undefined' && typeof ReactDOM !== 'undefined',
-            'vue': () => typeof Vue !== 'undefined',
-            'vanilla': () => true
-        };
-
-        return checks[framework] ? checks[framework]() : false;
-    }
-
     renderCode(code, framework) {
-        const config = FrameworkDetector.frameworks[framework];
+        console.log('[CoMarkup] Starting render process', {framework});
+
         const popupUrl = browser.runtime.getURL('popup.html');
+        console.log('[CoMarkup] Popup URL:', popupUrl);
+
+        // Otwórz popup i zachowaj referencję
         const popup = window.open(popupUrl, 'CoMarkup Preview', 'width=1200,height=800');
 
-        // Czekamy na załadowanie popupu przed wysłaniem danych
-        popup.addEventListener('load', () => {
-            // Wyczyść kod z niepotrzebnych białych znaków i zachowaj oryginalne formatowanie
-            const cleanCode = code.replace(/^\s+|\s+$/g, '');
+        // Sprawdź czy popup został utworzony
+        if (!popup) {
+            console.error('[CoMarkup] Failed to open popup - blocked by browser?');
+            return;
+        }
 
-            // Wykryj i usuń znaczniki HTML jeśli są obecne
-            const extractedCode = this.extractCodeFromHTML(cleanCode);
+        // Przygotuj dane przed wysłaniem
+        const cleanCode = this.extractCodeFromHTML(code);
+        const messageData = {
+            type: 'RENDER_CODE',
+            payload: {
+                code: cleanCode,
+                framework,
+                originalContent: code
+            }
+        };
 
-            popup.postMessage({
-                type: 'RENDER_CODE',
-                payload: {
-                    code: extractedCode,
-                    framework,
-                    config,
-                    originalContent: cleanCode // zachowaj oryginalną treść
+        console.log('[CoMarkup] Prepared message data:', messageData);
+
+        // Dodaj timer do sprawdzenia czy popup jest gotowy
+        const maxAttempts = 50; // 5 sekund
+        let attempts = 0;
+
+        const checkPopupReady = setInterval(() => {
+            attempts++;
+
+            try {
+                if (popup.document.readyState === 'complete') {
+                    clearInterval(checkPopupReady);
+                    console.log('[CoMarkup] Popup ready, sending message');
+                    popup.postMessage(messageData, '*');
+                } else if (attempts >= maxAttempts) {
+                    clearInterval(checkPopupReady);
+                    console.error('[CoMarkup] Popup failed to load after 5 seconds');
                 }
-            }, '*');
+            } catch (e) {
+                console.error('[CoMarkup] Error checking popup state:', e);
+                clearInterval(checkPopupReady);
+            }
+        }, 100);
+
+        // Dodaj nasłuchiwanie na potwierdzenie od popupa
+        window.addEventListener('message', function (event) {
+            if (event.data.type === 'POPUP_READY') {
+                console.log('[CoMarkup] Received ready confirmation from popup');
+            }
+            if (event.data.type === 'CODE_RECEIVED') {
+                console.log('[CoMarkup] Popup confirmed code reception');
+            }
         });
     }
 
-// Dodaj metodę do ekstrakcji kodu z HTML
     extractCodeFromHTML(content) {
-        // Sprawdź czy kod jest wewnątrz znaczników <code> lub <pre>
+        // Usuń znaczniki HTML jeśli istnieją
         const codeMatch = content.match(/<code[^>]*>([\s\S]*?)<\/code>/i) ||
             content.match(/<pre[^>]*>([\s\S]*?)<\/pre>/i);
 
         if (codeMatch) {
-            // Usuń wszystkie znaczniki HTML i zdekoduj encje HTML
-            let code = codeMatch[1]
+            return codeMatch[1]
                 .replace(/<[^>]+>/g, '')
                 .replace(/&lt;/g, '<')
                 .replace(/&gt;/g, '>')
                 .replace(/&amp;/g, '&')
                 .replace(/&quot;/g, '"')
                 .replace(/&#39;/g, "'");
-
-            return code;
         }
 
-        return content; // Zwróć oryginalną zawartość jeśli nie znaleziono znaczników
-    }
-
-    getFrameworkWrapper(framework, code) {
-        switch (framework) {
-            case 'react':
-                return `
-                    const App = () => {
-                        try {
-                            ${code}
-                        } catch (error) {
-                            return React.createElement('div', 
-                                { style: { color: 'red' } },
-                                'Error: ' + error.message
-                            );
-                        }
-                    };
-                    
-                    if (frameworkReady) {
-                        const rootElement = document.getElementById('root');
-                        ReactDOM.render(React.createElement(App), rootElement);
-                    }
-                `;
-            case 'vue':
-                return `
-                    if (frameworkReady) {
-                        const app = Vue.createApp({
-                            setup() {
-                                return () => {
-                                    ${code}
-                                }
-                            }
-                        });
-                        app.mount('#root');
-                    }
-                `;
-            case 'vanilla':
-                return `
-                    (function() {
-                        const root = document.getElementById('root');
-                        ${code}
-                    })();
-                `;
-            default:
-                return code;
-        }
+        return content;
     }
 }
 
-// Initialize the renderer
+// Inicjalizacja renderera
 new CoMarkupRenderer();

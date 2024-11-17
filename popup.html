@@ -2,7 +2,8 @@
 <html>
 <head>
     <title>CoMarkup Preview</title>
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://unpkg.com; style-src 'self' 'unsafe-inline';">
+    <meta charset="UTF-8">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self' https://unpkg.com; script-src 'self' 'unsafe-eval' https://unpkg.com; style-src 'self' 'unsafe-inline'">
     <link rel="stylesheet" href="popup.css">
 </head>
 <body>
@@ -10,18 +11,16 @@
     <div class="editor-panel">
         <div class="editor-header">
             <span>Source Code</span>
-            <button id="copyBtn" class="small-button">Copy</button>
+            <button id="copyBtn">Copy</button>
         </div>
         <div id="editor" class="code-editor"></div>
     </div>
     <div class="preview-panel">
         <div class="preview-header">
             <span>Preview</span>
-            <button id="closeBtn" class="small-button">Close</button>
+            <button id="closeBtn">Close</button>
         </div>
-        <div id="root">
-            <div class="loading">Loading preview...</div>
-        </div>
+        <div id="root"></div>
     </div>
 </div>
 <script src="popup.js"></script>
