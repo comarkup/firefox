@@ -7,22 +7,6 @@ function handleError(error) {
     return { error: error.message };
 }
 
-// Helper function to send message to popup
-async function sendToPopup(message) {
-    if (!activePopup) {
-        console.warn('[Background] No active popup to send message to');
-        return;
-    }
-
-    try {
-        return await browser.runtime.sendMessage(message);
-    } catch (error) {
-        console.error('[Background] Error sending message to popup:', error);
-        // If we get an error sending to the popup, assume it's closed
-        activePopup = null;
-    }
-}
-
 // Helper function to send message to content script
 async function sendToContent(tabId, message) {
     if (!tabId) {
@@ -45,43 +29,58 @@ browser.runtime.onMessage.addListener((message, sender) => {
         try {
             switch (message.type) {
                 case 'OPEN_POPUP':
+                    // Store the sender tab ID
                     activePopup = {
                         tabId: sender.tab.id,
-                        resolve
+                        frameId: null
                     };
-                    // Store the resolve function to handle popup ready later
-                    pendingMessages.set('POPUP_READY', resolve);
+                    resolve({ success: true });
                     break;
 
                 case 'POPUP_LOADED':
-                    if (activePopup && activePopup.tabId) {
-                        // Send initialization data to popup
-                        sendToPopup({
-                            type: 'INIT_POPUP',
-                            tabId: activePopup.tabId
+                    if (activePopup) {
+                        // Store the popup frame ID
+                        activePopup.frameId = sender.frameId;
+                        // Send initialization data back to the same frame
+                        browser.tabs.sendMessage(
+                            sender.tab.id,
+                            {
+                                type: 'INIT_POPUP',
+                                tabId: activePopup.tabId
+                            },
+                            { frameId: sender.frameId }
+                        ).catch(error => {
+                            console.error('[Background] Error sending INIT_POPUP:', error);
                         });
                     }
                     resolve({ success: true });
                     break;
 
                 case 'POPUP_READY':
-                    const pendingResolve = pendingMessages.get('POPUP_READY');
-                    if (pendingResolve) {
-                        pendingResolve({ success: true });
-                        pendingMessages.delete('POPUP_READY');
-                    }
-                    // Notify content script that popup is ready
                     if (activePopup && activePopup.tabId) {
+                        // Notify content script that popup is ready
                         sendToContent(activePopup.tabId, { type: 'POPUP_READY' });
+                    }
+                    resolve({ success: true });
+                    break;
+
+                case 'RENDER_CODE':
+                    if (activePopup && activePopup.frameId) {
+                        // Forward render code message to popup frame
+                        browser.tabs.sendMessage(
+                            sender.tab.id,
+                            message,
+                            { frameId: activePopup.frameId }
+                        ).catch(error => {
+                            console.error('[Background] Error forwarding RENDER_CODE:', error);
+                        });
                     }
                     resolve({ success: true });
                     break;
 
                 case 'RENDER_COMPLETE':
                     if (activePopup && activePopup.tabId) {
-                        sendToContent(activePopup.tabId, { 
-                            type: 'RENDER_COMPLETE'
-                        });
+                        sendToContent(activePopup.tabId, { type: 'RENDER_COMPLETE' });
                     }
                     resolve({ success: true });
                     break;
@@ -100,16 +99,6 @@ browser.runtime.onMessage.addListener((message, sender) => {
                     if (activePopup && activePopup.tabId) {
                         sendToContent(activePopup.tabId, { type: 'POPUP_CLOSED' });
                         activePopup = null;
-                        pendingMessages.clear();
-                    }
-                    resolve({ success: true });
-                    break;
-
-                case 'CLOSE_POPUP':
-                    if (activePopup && activePopup.tabId) {
-                        sendToContent(activePopup.tabId, { type: 'POPUP_CLOSED' });
-                        activePopup = null;
-                        pendingMessages.clear();
                     }
                     resolve({ success: true });
                     break;

@@ -3,6 +3,7 @@ class CoMarkupRenderer {
         this.setupMutationObserver();
         this.processExistingCodeBlocks();
         this.pendingRender = null;
+        this.popup = null;
         this.setupMessageListener();
     }
 
@@ -29,10 +30,104 @@ class CoMarkupRenderer {
                     break;
 
                 case 'POPUP_CLOSED':
-                    this.pendingRender = null;
+                    this.closePopup();
                     break;
             }
         });
+    }
+
+    createPopup() {
+        if (this.popup) {
+            return;
+        }
+
+        // Create popup container
+        const container = document.createElement('div');
+        container.className = 'comarkup-popup-container';
+        container.innerHTML = `
+            <div class="comarkup-popup-overlay"></div>
+            <div class="comarkup-popup">
+                <iframe src="${browser.runtime.getURL('popup.html')}" frameborder="0"></iframe>
+            </div>
+        `;
+
+        // Add styles
+        const style = document.createElement('style');
+        style.textContent = `
+            .comarkup-popup-container {
+                position: fixed;
+                top: 0;
+                left: 0;
+                right: 0;
+                bottom: 0;
+                z-index: 999999;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                opacity: 0;
+                transition: opacity 0.3s ease;
+            }
+            .comarkup-popup-container.visible {
+                opacity: 1;
+            }
+            .comarkup-popup-overlay {
+                position: absolute;
+                top: 0;
+                left: 0;
+                right: 0;
+                bottom: 0;
+                background: rgba(0, 0, 0, 0.5);
+            }
+            .comarkup-popup {
+                position: relative;
+                width: 90%;
+                height: 90%;
+                max-width: 1200px;
+                max-height: 800px;
+                background: white;
+                border-radius: 8px;
+                overflow: hidden;
+                box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+                transform: translateY(20px);
+                transition: transform 0.3s ease;
+            }
+            .comarkup-popup-container.visible .comarkup-popup {
+                transform: translateY(0);
+            }
+            .comarkup-popup iframe {
+                width: 100%;
+                height: 100%;
+                border: none;
+            }
+        `;
+        document.head.appendChild(style);
+
+        // Add click handler to close on overlay click
+        container.querySelector('.comarkup-popup-overlay').addEventListener('click', () => {
+            this.closePopup();
+        });
+
+        document.body.appendChild(container);
+        this.popup = container;
+
+        // Trigger animation after a brief delay
+        requestAnimationFrame(() => {
+            container.classList.add('visible');
+        });
+    }
+
+    closePopup() {
+        if (this.popup) {
+            // Trigger closing animation
+            this.popup.classList.remove('visible');
+            
+            // Remove after animation completes
+            setTimeout(() => {
+                this.popup.remove();
+                this.popup = null;
+                this.pendingRender = null;
+            }, 300);
+        }
     }
 
     setupMutationObserver() {
@@ -163,20 +258,17 @@ class CoMarkupRenderer {
                 framework
             };
 
-            // Request popup opening from background script
-            const response = await browser.runtime.sendMessage({ type: 'OPEN_POPUP' });
-            
-            if (response.error) {
-                throw new Error(response.error);
-            }
+            // Create and show the popup
+            this.createPopup();
 
-            // The background script will handle opening the popup and sending the INIT_POPUP message
-            // When we receive POPUP_READY, we'll send the code (handled in setupMessageListener)
+            // Request popup initialization from background script
+            await browser.runtime.sendMessage({ type: 'OPEN_POPUP' });
             
         } catch (error) {
             console.error('[CoMarkup] Error:', error);
             this.showNotification(error.message, 'error');
             this.pendingRender = null;
+            this.closePopup();
         }
     }
 
@@ -194,6 +286,7 @@ class CoMarkupRenderer {
             console.error('[CoMarkup] Error sending code to popup:', error);
             this.showNotification('Failed to send code to preview', 'error');
             this.pendingRender = null;
+            this.closePopup();
         }
     }
 

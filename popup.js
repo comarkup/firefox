@@ -1,7 +1,6 @@
 const DEBUG = true;
 let currentCode = '';
 let popupInitialized = false;
-let popupReady = false;
 let parentTabId = null;
 
 // Debug steps definition
@@ -76,7 +75,7 @@ const DebugLogger = {
         style.textContent = `
             .debug-panel {
                 position: fixed;
-                top: 10px;
+                top: 50px;
                 right: 10px;
                 background: rgba(0,0,0,0.9);
                 color: white;
@@ -279,15 +278,6 @@ function getFrameworkWrapper(framework, code) {
     }
 }
 
-function checkFrameworkAvailability(framework) {
-    const checks = {
-        'react': () => typeof React !== 'undefined' && typeof ReactDOM !== 'undefined',
-        'vue': () => typeof Vue !== 'undefined',
-        'vanilla': () => true
-    };
-    return checks[framework] ? checks[framework]() : false;
-}
-
 function setupUI() {
     const copyBtn = document.getElementById('copyBtn');
     const closeBtn = document.getElementById('closeBtn');
@@ -297,14 +287,7 @@ function setupUI() {
     if (copyBtn && closeBtn) {
         copyBtn.addEventListener('click', handleCopy);
         closeBtn.addEventListener('click', () => {
-            try {
-                browser.runtime.sendMessage({ type: 'CLOSE_POPUP' })
-                    .catch(error => console.error('Error sending close message:', error));
-                window.close();
-            } catch (error) {
-                console.error('Error closing popup:', error);
-                window.close();
-            }
+            browser.runtime.sendMessage({ type: 'POPUP_CLOSED' });
         });
         DebugLogger.updateStep(STEPS.BUTTONS_INIT, 'success');
     } else {
@@ -358,15 +341,8 @@ async function processCode({ code, framework, originalContent }) {
         DebugLogger.updateStep(STEPS.RENDERING, 'success');
         DebugLogger.updateStep(STEPS.COMPLETION, 'success');
 
-        // Notify background script of successful render
-        try {
-            await browser.runtime.sendMessage({ 
-                type: 'RENDER_COMPLETE',
-                tabId: parentTabId 
-            });
-        } catch (error) {
-            console.error('Error sending render complete message:', error);
-        }
+        // Notify of successful render
+        browser.runtime.sendMessage({ type: 'RENDER_COMPLETE' });
     } catch (error) {
         console.error('Processing error:', error);
         DebugLogger.updateStep(STEPS.COMPLETION, 'error', {
@@ -374,88 +350,59 @@ async function processCode({ code, framework, originalContent }) {
             phase: error.phase || 'unknown'
         });
 
-        // Notify background script of render error
-        try {
-            await browser.runtime.sendMessage({
-                type: 'RENDER_ERROR',
-                error: error.message,
-                tabId: parentTabId
-            });
-        } catch (msgError) {
-            console.error('Error sending render error message:', msgError);
-        }
+        // Notify of render error
+        browser.runtime.sendMessage({
+            type: 'RENDER_ERROR',
+            error: error.message
+        });
 
         throw error;
     }
 }
 
 // Initialize message handling
-browser.runtime.onMessage.addListener(async (message, sender) => {
-    console.log('[Popup] Received message:', message);
-    
-    try {
-        switch (message.type) {
-            case 'INIT_POPUP':
-                parentTabId = message.tabId;
-                popupInitialized = true;
-                DebugLogger.updateStep('popup-initialized', 'success', { parentTabId });
-                await browser.runtime.sendMessage({ 
-                    type: 'POPUP_READY',
-                    tabId: parentTabId 
-                });
-                break;
+browser.runtime.onMessage.addListener((message) => {
+    console.log('[Popup Frame] Received message:', message);
 
-            case 'RENDER_CODE':
-                console.log('[Popup] Received code to render');
-                const { code, framework, originalContent } = message.payload;
+    switch (message.type) {
+        case 'INIT_POPUP':
+            parentTabId = message.tabId;
+            popupInitialized = true;
+            DebugLogger.updateStep('popup-initialized', 'success', { parentTabId });
+            browser.runtime.sendMessage({ type: 'POPUP_READY' });
+            break;
 
-                DebugLogger.updateStep(STEPS.CODE_RECEIVED, 'success', {
-                    framework,
-                    codeLength: code?.length || 0
-                });
+        case 'RENDER_CODE':
+            console.log('[Popup Frame] Received code to render');
+            const { code, framework, originalContent } = message.payload;
 
-                try {
-                    await processCode({ code, framework, originalContent });
-                    console.log('[Popup] Code processed successfully');
-                } catch (error) {
-                    console.error('[Popup] Process error:', error);
-                }
-                break;
-        }
-    } catch (error) {
-        console.error('[Popup] Error handling message:', error);
-        DebugLogger.updateStep('message-handling', 'error', error.message);
+            DebugLogger.updateStep(STEPS.CODE_RECEIVED, 'success', {
+                framework,
+                codeLength: code?.length || 0
+            });
+
+            processCode({ code, framework, originalContent }).catch(error => {
+                console.error('[Popup Frame] Process error:', error);
+            });
+            break;
     }
+
+    // Always return true to indicate async response
+    return true;
 });
 
 // Initialize on DOM load
-document.addEventListener('DOMContentLoaded', async () => {
-    console.log('[Popup] DOM loaded');
+document.addEventListener('DOMContentLoaded', () => {
+    console.log('[Popup Frame] DOM loaded');
     DebugLogger.init();
     DebugLogger.updateStep(STEPS.INIT, 'success');
     DebugLogger.updateStep(STEPS.DOM_READY, 'success');
 
     setupUI();
 
-    try {
-        await browser.runtime.sendMessage({ type: 'POPUP_LOADED' });
-        DebugLogger.updateStep(STEPS.POPUP_READY, 'success');
-    } catch (error) {
-        console.error('[Popup] Error sending POPUP_LOADED message:', error);
+    // Notify background script that popup frame is loaded
+    browser.runtime.sendMessage({ type: 'POPUP_LOADED' }).catch(error => {
+        console.error('[Popup Frame] Error sending POPUP_LOADED message:', error);
         DebugLogger.updateStep(STEPS.POPUP_READY, 'error', error.message);
-    }
-});
-
-// Handle popup closing
-window.addEventListener('beforeunload', async () => {
-    if (parentTabId) {
-        try {
-            await browser.runtime.sendMessage({
-                type: 'POPUP_CLOSED',
-                tabId: parentTabId
-            });
-        } catch (error) {
-            console.error('Error sending POPUP_CLOSED message:', error);
-        }
-    }
+    });
 });
