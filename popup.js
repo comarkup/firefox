@@ -1,35 +1,84 @@
+// popup.js
 let frameworkReady = false;
+let currentCode = '';
+let editorInstance = null;
 
-// Helper do ładowania skryptów
-function loadScript(src) {
-    return new Promise((resolve, reject) => {
-        const script = document.createElement('script');
-        script.src = src;
-        script.onload = resolve;
-        script.onerror = reject;
-        document.head.appendChild(script);
-    });
+function initializeEditor(code, originalContent) {
+    const editor = document.getElementById('editor');
+    currentCode = code;
+
+    // Zachowaj oryginalne wcięcia i formatowanie
+    const formattedCode = originalContent || formatCode(code);
+
+    // Pokaż kod w edytorze
+    editor.innerHTML = `<pre><code>${highlightCode(formattedCode)}</code></pre>`;
+
+    // Dodaj numerację linii
+    addLineNumbers(editor);
 }
 
-// Inicjalizacja przycisków
-document.getElementById('copyBtn').addEventListener('click', async () => {
-    try {
-        const html = document.getElementById('root').innerHTML;
-        await navigator.clipboard.writeText(html);
-        alert('Copied to clipboard!');
-    } catch (err) {
-        alert('Error copying: ' + err);
-    }
-});
+function addLineNumbers(editor) {
+    const lines = editor.querySelector('pre').innerText.split('\n');
+    const lineNumbers = document.createElement('div');
+    lineNumbers.className = 'line-numbers';
 
-document.getElementById('closeBtn').addEventListener('click', () => {
-    window.close();
-});
+    lines.forEach((_, index) => {
+        const lineNumber = document.createElement('div');
+        lineNumber.className = 'line-number';
+        lineNumber.textContent = index + 1;
+        lineNumbers.appendChild(lineNumber);
+    });
+
+    editor.insertBefore(lineNumbers, editor.firstChild);
+}
+
+// Dodaj style do CSS
+const additionalStyles = `
+.code-editor {
+    position: relative;
+    padding-left: 3.5em;
+    background: #1e1e1e;
+}
+
+.line-numbers {
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 3em;
+    background: #252525;
+    border-right: 1px solid #333;
+    user-select: none;
+}
+
+.line-number {
+    color: #666;
+    text-align: right;
+    padding: 0 0.5em;
+    font-size: 14px;
+    line-height: 1.5;
+}
+
+pre {
+    margin: 0;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    tab-size: 4;
+}
+
+code {
+    font-family: 'Courier New', monospace;
+    line-height: 1.5;
+}
+`;
 
 // Nasłuchiwanie na wiadomości od content script
 window.addEventListener('message', async function(event) {
     if (event.data.type === 'RENDER_CODE') {
-        const { code, framework, config } = event.data.payload;
+        const { code, framework, config, originalContent } = event.data.payload;
+
+        // Inicjalizuj edytor z otrzymanym kodem
+        initializeEditor(code, originalContent);
 
         try {
             // Ładowanie skryptów frameworka
@@ -48,10 +97,8 @@ window.addEventListener('message', async function(event) {
                 throw new Error('Framework not loaded properly');
             }
 
-            // Przygotowanie kodu do wykonania
-            const codeWrapper = getFrameworkWrapper(framework, code);
-
             // Wykonanie kodu
+            const codeWrapper = getFrameworkWrapper(framework, code);
             if (framework === 'react') {
                 const transformed = Babel.transform(codeWrapper, {
                     presets: ['react']
@@ -70,41 +117,7 @@ window.addEventListener('message', async function(event) {
     }
 });
 
-function getFrameworkWrapper(framework, code) {
-    switch (framework) {
-        case 'react':
-            return `
-                const App = () => {
-                    try {
-                        ${code}
-                    } catch (error) {
-                        return React.createElement('div', 
-                            { style: { color: 'red' } },
-                            'Error: ' + error.message
-                        );
-                    }
-                };
-                ReactDOM.render(React.createElement(App), document.getElementById('root'));
-            `;
-        case 'vue':
-            return `
-                const app = Vue.createApp({
-                    setup() {
-                        return () => {
-                            ${code}
-                        }
-                    }
-                });
-                app.mount('#root');
-            `;
-        case 'vanilla':
-            return `
-                (function() {
-                    const root = document.getElementById('root');
-                    ${code}
-                })();
-            `;
-        default:
-            return code;
-    }
-}
+// Dodaj style do dokumentu
+const styleSheet = document.createElement('style');
+styleSheet.textContent = additionalStyles;
+document.head.appendChild(styleSheet);

@@ -180,24 +180,51 @@ class CoMarkupRenderer {
         return checks[framework] ? checks[framework]() : false;
     }
 
-    async renderCode(code, framework) {
+    renderCode(code, framework) {
         const config = FrameworkDetector.frameworks[framework];
-
-        // Zamiast bezpośrednio używać window.open, użyjemy pliku HTML z web_accessible_resources
         const popupUrl = browser.runtime.getURL('popup.html');
-        const popup = window.open(popupUrl, 'CoMarkup Preview', 'width=800,height=600');
+        const popup = window.open(popupUrl, 'CoMarkup Preview', 'width=1200,height=800');
 
-        // Czekamy na załadowanie popupu i wysyłamy do niego dane
+        // Czekamy na załadowanie popupu przed wysłaniem danych
         popup.addEventListener('load', () => {
+            // Wyczyść kod z niepotrzebnych białych znaków i zachowaj oryginalne formatowanie
+            const cleanCode = code.replace(/^\s+|\s+$/g, '');
+
+            // Wykryj i usuń znaczniki HTML jeśli są obecne
+            const extractedCode = this.extractCodeFromHTML(cleanCode);
+
             popup.postMessage({
                 type: 'RENDER_CODE',
                 payload: {
-                    code,
+                    code: extractedCode,
                     framework,
-                    config
+                    config,
+                    originalContent: cleanCode // zachowaj oryginalną treść
                 }
             }, '*');
         });
+    }
+
+// Dodaj metodę do ekstrakcji kodu z HTML
+    extractCodeFromHTML(content) {
+        // Sprawdź czy kod jest wewnątrz znaczników <code> lub <pre>
+        const codeMatch = content.match(/<code[^>]*>([\s\S]*?)<\/code>/i) ||
+            content.match(/<pre[^>]*>([\s\S]*?)<\/pre>/i);
+
+        if (codeMatch) {
+            // Usuń wszystkie znaczniki HTML i zdekoduj encje HTML
+            let code = codeMatch[1]
+                .replace(/<[^>]+>/g, '')
+                .replace(/&lt;/g, '<')
+                .replace(/&gt;/g, '>')
+                .replace(/&amp;/g, '&')
+                .replace(/&quot;/g, '"')
+                .replace(/&#39;/g, "'");
+
+            return code;
+        }
+
+        return content; // Zwróć oryginalną zawartość jeśli nie znaleziono znaczników
     }
 
     getFrameworkWrapper(framework, code) {
