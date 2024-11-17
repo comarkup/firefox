@@ -112,7 +112,7 @@ class CoMarkupRenderer {
     }
 
 // Zaktualizowana metoda tworzenia pojedynczej ikony
-    createActionIcon({ action, tooltip, svg, onClick }) {
+    createActionIcon({action, tooltip, svg, onClick}) {
         const container = document.createElement('div');
         container.style.position = 'relative';
         container.style.display = 'flex';
