@@ -5,6 +5,7 @@
   "description": "Code renderer for multiple frameworks",
   "permissions": [
     "activeTab",
+    "tabs",
     "clipboardWrite",
     "<all_urls>"
   ],
@@ -31,7 +32,16 @@
   "web_accessible_resources": [
     "popup.html",
     "popup.css",
-    "popup.js"
+    "popup.js",
+    "frameworks/*",
+    "img/*",
+    "comarkup-logo.svg"
   ],
-  "content_security_policy": "script-src 'self' 'unsafe-eval' https://unpkg.com; object-src 'self'"
+  "content_security_policy": "script-src 'self' 'unsafe-eval' https://unpkg.com blob:; object-src 'self'; connect-src 'self' https://unpkg.com",
+  "browser_specific_settings": {
+    "gecko": {
+      "id": "comarkup@example.com",
+      "strict_min_version": "57.0"
+    }
+  }
 }

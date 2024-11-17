@@ -2,9 +2,37 @@ class CoMarkupRenderer {
     constructor() {
         this.setupMutationObserver();
         this.processExistingCodeBlocks();
-        this.activePopup = null;
-        this.popupReadyPromise = null;
-        this.pendingCode = null;
+        this.pendingRender = null;
+        this.setupMessageListener();
+    }
+
+    setupMessageListener() {
+        browser.runtime.onMessage.addListener((message) => {
+            console.log('[CoMarkup] Received message:', message);
+            
+            switch (message.type) {
+                case 'POPUP_READY':
+                    if (this.pendingRender) {
+                        this.sendCodeToPopup(this.pendingRender.code, this.pendingRender.framework);
+                    }
+                    break;
+
+                case 'RENDER_COMPLETE':
+                    this.showNotification('Preview rendered successfully!');
+                    this.pendingRender = null;
+                    break;
+
+                case 'RENDER_ERROR':
+                    console.error('[CoMarkup] Render error:', message.error);
+                    this.showNotification(message.error, 'error');
+                    this.pendingRender = null;
+                    break;
+
+                case 'POPUP_CLOSED':
+                    this.pendingRender = null;
+                    break;
+            }
+        });
     }
 
     setupMutationObserver() {
@@ -69,7 +97,6 @@ class CoMarkupRenderer {
             </div>
         `;
 
-        // Event listeners dla ikon
         const renderIcon = badge.querySelector('[data-action="render"]');
         const copyIcon = badge.querySelector('[data-action="copy"]');
 
@@ -126,130 +153,48 @@ class CoMarkupRenderer {
         }, 2000);
     }
 
-    handlePopupMessage(event) {
-        console.log('[CoMarkup] Received message from popup:', event.data);
-
-        if (event.data.type === 'POPUP_READY') {
-            this.sendCodeToPopup();
-        }
-
-        if (event.data.type === 'RENDER_COMPLETE') {
-            this.pendingCode?.resolve();
-            this.pendingCode = null;
-        }
-
-        if (event.data.type === 'RENDER_ERROR') {
-            console.error('[CoMarkup] Render error:', event.data.error);
-            this.pendingCode?.resolve(new Error(event.data.error));
-            this.pendingCode = null;
-        }
-    }
-
     async renderCode(code, framework) {
         console.log('[CoMarkup] Starting render process', { framework });
 
         try {
-            if (this.activePopup && !this.activePopup.closed) {
-                this.activePopup.close();
-            }
-
-            const popupUrl = browser.runtime.getURL('popup.html');
-            this.activePopup = window.open(popupUrl, 'CoMarkup Preview', 'width=1200,height=800');
-
-            if (!this.activePopup) {
-                throw new Error('Failed to open popup - blocked by browser?');
-            }
-
-            // Czekaj na załadowanie popupu
-            const messageHandler = (event) => {
-                if (event.data.type === 'POPUP_READY') {
-                    console.log('[CoMarkup] Popup ready, sending code');
-                    this.activePopup.postMessage({
-                        type: 'RENDER_CODE',
-                        payload: {
-                            code: this.extractCodeFromHTML(code),
-                            framework,
-                            originalContent: code
-                        }
-                    }, '*');
-                }
+            // Store the pending render
+            this.pendingRender = {
+                code,
+                framework
             };
 
-            window.addEventListener('message', messageHandler);
+            // Request popup opening from background script
+            const response = await browser.runtime.sendMessage({ type: 'OPEN_POPUP' });
+            
+            if (response.error) {
+                throw new Error(response.error);
+            }
 
-            // Wyślij PING co 100ms przez 5 sekund
-            let attempts = 0;
-            const pingInterval = setInterval(() => {
-                if (attempts >= 50 || !this.activePopup || this.activePopup.closed) {
-                    clearInterval(pingInterval);
-                    window.removeEventListener('message', messageHandler);
-                    return;
-                }
-
-                try {
-                    this.activePopup.postMessage({ type: 'PING' }, '*');
-                    attempts++;
-                } catch (e) {
-                    console.log('[CoMarkup] Popup not ready yet');
-                }
-            }, 100);
-
+            // The background script will handle opening the popup and sending the INIT_POPUP message
+            // When we receive POPUP_READY, we'll send the code (handled in setupMessageListener)
+            
         } catch (error) {
             console.error('[CoMarkup] Error:', error);
             this.showNotification(error.message, 'error');
+            this.pendingRender = null;
         }
     }
 
-
-
-    checkPopupReady() {
-        if (!this.pendingCode || !this.activePopup || this.activePopup.closed) {
-            return;
+    async sendCodeToPopup(code, framework) {
+        try {
+            await browser.runtime.sendMessage({
+                type: 'RENDER_CODE',
+                payload: {
+                    code: this.extractCodeFromHTML(code),
+                    framework,
+                    originalContent: code
+                }
+            });
+        } catch (error) {
+            console.error('[CoMarkup] Error sending code to popup:', error);
+            this.showNotification('Failed to send code to preview', 'error');
+            this.pendingRender = null;
         }
-
-        const maxRetries = 50; // 5 seconds
-        const checkInterval = 100; // 100ms
-
-        const check = () => {
-            if (this.pendingCode.retries >= maxRetries) {
-                console.error('[CoMarkup] Popup failed to initialize');
-                return;
-            }
-
-            this.pendingCode.retries++;
-
-            try {
-                // Próba wysłania wiadomości testowej
-                this.activePopup.postMessage({ type: 'PING' }, '*');
-            } catch (e) {
-                // Jeśli popup nie jest gotowy, spróbuj ponownie
-                setTimeout(check, checkInterval);
-            }
-        };
-
-        check();
-    }
-
-    sendCodeToPopup() {
-        if (!this.pendingCode || !this.activePopup || this.activePopup.closed) {
-            console.error('[CoMarkup] Cannot send code - popup not ready');
-            return;
-        }
-
-        const { code, framework } = this.pendingCode;
-        console.log('[CoMarkup] Sending code to popup', {
-            framework,
-            codeLength: code?.length
-        });
-
-        this.activePopup.postMessage({
-            type: 'RENDER_CODE',
-            payload: {
-                code: this.extractCodeFromHTML(code),
-                framework,
-                originalContent: code
-            }
-        }, '*');
     }
 
     extractCodeFromHTML(content) {
@@ -258,13 +203,11 @@ class CoMarkupRenderer {
             return '';
         }
 
-        // Log oryginalną zawartość
         console.log('[CoMarkup] Original content:', {
             length: content.length,
             preview: content.substring(0, 100)
         });
 
-        // Usuń znaczniki HTML jeśli istnieją
         const codeMatch = content.match(/<code[^>]*>([\s\S]*?)<\/code>/i) ||
             content.match(/<pre[^>]*>([\s\S]*?)<\/pre>/i);
 
@@ -289,9 +232,7 @@ class CoMarkupRenderer {
         console.log('[CoMarkup] Using original content as code');
         return content.trim();
     }
-
-
 }
 
-// Inicjalizacja renderera
+// Initialize renderer
 new CoMarkupRenderer();
