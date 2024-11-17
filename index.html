@@ -3,38 +3,68 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CoMarkup Demo</title>
+    <title>CoMarkup Framework Demo</title>
     <style>
         body {
             font-family: Arial, sans-serif;
-            max-width: 800px;
+            max-width: 1200px;
             margin: 0 auto;
             padding: 20px;
             background: #f5f7fb;
         }
-
         .container {
             background: white;
             padding: 20px;
             border-radius: 8px;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
         }
-
-        .demo-buttons {
-            margin: 20px 0;
+        .framework-buttons {
             display: flex;
             gap: 10px;
+            flex-wrap: wrap;
+            margin-bottom: 20px;
+            padding: 10px;
+            background: #f8fafc;
+            border-radius: 8px;
         }
-
+        .framework-group {
+            display: flex;
+            gap: 5px;
+            align-items: center;
+            padding-right: 15px;
+            border-right: 2px solid #e2e8f0;
+        }
+        .framework-group:last-child {
+            border-right: none;
+        }
         button {
             padding: 8px 16px;
             border: none;
             border-radius: 4px;
-            background: #2563eb;
-            color: white;
             cursor: pointer;
+            font-size: 14px;
+            transition: all 0.3s;
         }
-
+        .btn-react {
+            background: #61dafb;
+            color: #000;
+        }
+        .btn-vue {
+            background: #42b883;
+            color: white;
+        }
+        .btn-angular {
+            background: #dd1b16;
+            color: white;
+        }
+        .btn-svelte {
+            background: #ff3e00;
+            color: white;
+        }
+        .btn-vanilla {
+            background: #f7df1e;
+            color: #000;
+        }
         pre {
             background: #1e293b;
             color: #e2e8f0;
@@ -44,25 +74,251 @@
             position: relative;
             margin: 20px 0;
         }
-
         code {
             font-family: monospace;
             white-space: pre-wrap;
+        }
+        .framework-label {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            padding: 3px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: bold;
         }
     </style>
 </head>
 <body>
 <div class="container">
-    <div class="demo-buttons">
-        <button onclick="loadSimpleComponent()">Simple Component</button>
-        <button onclick="loadComplexComponent()">Complex Component</button>
-        <button onclick="clearContent()">Clear</button>
+    <div class="framework-buttons">
+        <div class="framework-group">
+            <h4>React:</h4>
+            <button onclick="loadReactSimple()" class="btn-react">Simple</button>
+            <button onclick="loadReactHooks()" class="btn-react">Hooks</button>
+        </div>
+        <div class="framework-group">
+            <h4>Vue:</h4>
+            <button onclick="loadVueSimple()" class="btn-vue">Simple</button>
+            <button onclick="loadVueComposition()" class="btn-vue">Composition</button>
+        </div>
+        <div class="framework-group">
+            <h4>Angular:</h4>
+            <button onclick="loadAngularComponent()" class="btn-angular">Component</button>
+            <button onclick="loadAngularService()" class="btn-angular">Service</button>
+        </div>
+        <div class="framework-group">
+            <h4>Svelte:</h4>
+            <button onclick="loadSvelteSimple()" class="btn-svelte">Simple</button>
+            <button onclick="loadSvelteStore()" class="btn-svelte">Store</button>
+        </div>
+        <div class="framework-group">
+            <h4>Vanilla JS:</h4>
+            <button onclick="loadVanillaJS()" class="btn-vanilla">DOM</button>
+            <button onclick="loadVanillaClass()" class="btn-vanilla">Class</button>
+        </div>
     </div>
     <div id="content"></div>
 </div>
 
 <script>
-    // Obserwator zmian w DOM
+    // Framework detection and rendering logic
+    const frameworkConfigs = {
+        react: {
+            label: 'React',
+            color: '#61dafb',
+            scripts: [
+                'https://unpkg.com/react@17/umd/react.development.js',
+                'https://unpkg.com/react-dom@17/umd/react-dom.development.js',
+                'https://unpkg.com/babel-standalone@6/babel.min.js'
+            ]
+        },
+        vue: {
+            label: 'Vue.js',
+            color: '#42b883',
+            scripts: [
+                'https://unpkg.com/vue@3/dist/vue.global.js'
+            ]
+        },
+        angular: {
+            label: 'Angular',
+            color: '#dd1b16',
+            scripts: [
+                'https://unpkg.com/@angular/core@12',
+                'https://unpkg.com/@angular/platform-browser-dynamic@12'
+            ]
+        },
+        svelte: {
+            label: 'Svelte',
+            color: '#ff3e00',
+            scripts: [
+                'https://unpkg.com/svelte@3'
+            ]
+        },
+        vanilla: {
+            label: 'Vanilla JS',
+            color: '#f7df1e',
+            scripts: []
+        }
+    };
+
+    function detectFramework(code) {
+        if (code.includes('React') || code.includes('jsx')) return 'react';
+        if (code.includes('Vue') || code.includes('createApp')) return 'vue';
+        if (code.includes('@Component') || code.includes('@angular')) return 'angular';
+        if (code.includes('svelte')) return 'svelte';
+        return 'vanilla';
+    }
+
+    function addRenderButton(codeBlock, framework) {
+        if (codeBlock.parentElement.querySelector('.render-button')) return;
+
+        const button = document.createElement('button');
+        button.textContent = 'Renderuj';
+        button.className = 'render-button';
+        button.style.position = 'absolute';
+        button.style.top = '10px';
+        button.style.right = '10px';
+
+        const label = document.createElement('span');
+        label.className = 'framework-label';
+        label.textContent = frameworkConfigs[framework].label;
+        label.style.backgroundColor = frameworkConfigs[framework].color;
+
+        button.onclick = () => renderCode(codeBlock, framework);
+        codeBlock.parentElement.appendChild(button);
+        codeBlock.parentElement.appendChild(label);
+    }
+
+    // Example components for different frameworks
+    function loadReactSimple() {
+        const code =
+            `const Welcome = () => {
+    return <h1>Hello from React!</h1>;
+};
+
+return <Welcome />;`;
+        document.getElementById('content').innerHTML = `<pre><code>${code}</code></pre>`;
+        checkForNewCodeBlocks();
+    }
+
+    function loadReactHooks() {
+        const code =
+            `const Counter = () => {
+    const [count, setCount] = React.useState(0);
+
+    return (
+        <div>
+            <h2>Count: {count}</h2>
+            <button onClick={() => setCount(count + 1)}>
+                Increment
+            </button>
+        </div>
+    );
+};
+
+return <Counter />;`;
+        document.getElementById('content').innerHTML = `<pre><code>${code}</code></pre>`;
+        checkForNewCodeBlocks();
+    }
+
+    function loadVueSimple() {
+        const code =
+            `const app = Vue.createApp({
+    template: \`
+        <div>
+            <h1>{{ message }}</h1>
+            <button @click="reverse">Reverse</button>
+        </div>
+    \`,
+    data() {
+        return {
+            message: 'Hello from Vue!'
+        }
+    },
+    methods: {
+        reverse() {
+            this.message = this.message.split('').reverse().join('')
+        }
+    }
+});`;
+        document.getElementById('content').innerHTML = `<pre><code>${code}</code></pre>`;
+        checkForNewCodeBlocks();
+    }
+
+    function loadVanillaJS() {
+        const code =
+            `// Pure JavaScript DOM Manipulation
+const app = {
+    init() {
+        const root = document.createElement('div');
+        const title = document.createElement('h1');
+        title.textContent = 'Hello from Vanilla JS!';
+
+        const button = document.createElement('button');
+        button.textContent = 'Click me';
+        button.onclick = () => {
+            title.style.color = this.getRandomColor();
+        };
+
+        root.appendChild(title);
+        root.appendChild(button);
+        return root;
+    },
+
+    getRandomColor() {
+        return '#' + Math.floor(Math.random()*16777215).toString(16);
+    }
+};
+
+// Initialize the app
+app.init();`;
+        document.getElementById('content').innerHTML = `<pre><code>${code}</code></pre>`;
+        checkForNewCodeBlocks();
+    }
+
+    function loadVanillaClass() {
+        const code =
+            `class Counter {
+    constructor(initialCount = 0) {
+        this.count = initialCount;
+        this.element = this.render();
+    }
+
+    increment() {
+        this.count++;
+        this.update();
+    }
+
+    update() {
+        this.countDisplay.textContent = this.count;
+    }
+
+    render() {
+        const container = document.createElement('div');
+
+        this.countDisplay = document.createElement('h2');
+        this.countDisplay.textContent = this.count;
+
+        const button = document.createElement('button');
+        button.textContent = 'Increment';
+        button.onclick = () => this.increment();
+
+        container.appendChild(this.countDisplay);
+        container.appendChild(button);
+
+        return container;
+    }
+}
+
+// Create and mount the counter
+const counter = new Counter();
+document.body.appendChild(counter.element);`;
+        document.getElementById('content').innerHTML = `<pre><code>${code}</code></pre>`;
+        checkForNewCodeBlocks();
+    }
+
+    // Observer for new code blocks
     const observer = new MutationObserver((mutations) => {
         mutations.forEach((mutation) => {
             if (mutation.addedNodes.length) {
@@ -76,97 +332,71 @@
         subtree: true
     });
 
-    // Dodawanie przycisku renderowania
-    function addRenderButton(codeBlock) {
-        if (codeBlock.parentElement.querySelector('.render-button')) return;
-
-        const button = document.createElement('button');
-        button.textContent = 'Renderuj';
-        button.className = 'render-button';
-        button.style.position = 'absolute';
-        button.style.top = '10px';
-        button.style.right = '10px';
-
-        button.onclick = () => renderCode(codeBlock);
-        codeBlock.parentElement.appendChild(button);
-    }
-
-    // Sprawdzanie nowych bloków kodu
     function checkForNewCodeBlocks() {
         document.querySelectorAll('pre code').forEach(block => {
             if (!block.hasAttribute('data-processed')) {
-                addRenderButton(block);
+                const framework = detectFramework(block.textContent);
+                addRenderButton(block, framework);
                 block.setAttribute('data-processed', 'true');
             }
         });
     }
 
-    // Renderowanie kodu w popupie
-    function renderCode(codeBlock) {
+    function renderCode(codeBlock, framework) {
         const code = codeBlock.textContent;
-        const popup = window.open('', 'React Preview', 'width=800,height=600');
+        const config = frameworkConfigs[framework];
+        const popup = window.open('', 'Preview', 'width=800,height=600');
+
+        const scripts = config.scripts
+            .map(src => `<script src="${src}"><\/script>`)
+            .join('\n');
 
         const popupContent = `
                 <!DOCTYPE html>
                 <html>
                 <head>
-                    <title>React Preview</title>
-                    <script src="https://unpkg.com/react@17/umd/react.development.js"><\/script>
-                    <script src="https://unpkg.com/react-dom@17/umd/react-dom.development.js"><\/script>
-                    <script src="https://unpkg.com/babel-standalone@6/babel.min.js"><\/script>
+                    <title>${config.label} Preview</title>
+                    ${scripts}
                     <style>
                         body {
                             font-family: Arial, sans-serif;
                             padding: 20px;
-                            margin: 0;
                             background: #f5f7fb;
                         }
                         #root {
                             background: white;
                             padding: 20px;
                             border-radius: 8px;
-                            margin-bottom: 20px;
                             min-height: 100px;
-                        }
-                        .controls {
-                            margin-top: 20px;
                         }
                         button {
                             padding: 8px 16px;
                             border: none;
                             border-radius: 4px;
-                            background: #2563eb;
+                            background: ${config.color};
                             color: white;
                             cursor: pointer;
-                            margin-right: 10px;
+                            margin: 5px;
                         }
                     </style>
                 </head>
                 <body>
                     <div id="root"></div>
-                    <div class="controls">
+                    <div style="margin-top: 20px;">
                         <button onclick="copyToClipboard()">Copy HTML</button>
                         <button onclick="window.close()">Close</button>
                     </div>
 
-                    <script type="text/babel">
-                        const App = () => {
-                            try {
-                                ${code}
-                            } catch (error) {
-                                return <div style={{color: 'red'}}>Error: {error.message}</div>;
-                            }
-                        };
-
-                        ReactDOM.render(<App />, document.getElementById('root'));
+                    <script type="${framework === 'react' ? 'text/babel' : 'text/javascript'}">
+                        ${code}
                     <\/script>
 
                     <script>
                         function copyToClipboard() {
                             const html = document.getElementById('root').innerHTML;
                             navigator.clipboard.writeText(html)
-                                .then(() => alert('Copied to clipboard!'))
-                                .catch(err => alert('Error copying: ' + err));
+                                .then(() => alert('Copied!'))
+                                .catch(err => alert('Error: ' + err));
                         }
                     <\/script>
                 </body>
@@ -177,52 +407,7 @@
         popup.document.close();
     }
 
-    // Ładowanie przykładowych komponentów
-    function loadSimpleComponent() {
-        const code =
-            `const Welcome = () => {
-    return <h1>Hello CoMarkup!</h1>;
-};
-
-return <Welcome />;`;
-
-        document.getElementById('content').innerHTML = `<pre><code>${code}</code></pre>`;
-    }
-
-    function loadComplexComponent() {
-        const code =
-            `const Counter = () => {
-    const [count, setCount] = React.useState(0);
-
-    return (
-        <div style={{textAlign: 'center'}}>
-            <h2>Count: {count}</h2>
-            <button
-                onClick={() => setCount(count + 1)}
-                style={{
-                    padding: '10px 20px',
-                    background: '#2563eb',
-                    color: 'white',
-                    border: 'none',
-                    borderRadius: '4px'
-                }}
-            >
-                Increment
-            </button>
-        </div>
-    );
-};
-
-return <Counter />;`;
-
-        document.getElementById('content').innerHTML = `<pre><code>${code}</code></pre>`;
-    }
-
-    function clearContent() {
-        document.getElementById('content').innerHTML = '';
-    }
-
-    // Inicjalne sprawdzenie bloków kodu
+    // Initial check
     checkForNewCodeBlocks();
 </script>
 </body>
