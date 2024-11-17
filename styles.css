@@ -1,24 +1,25 @@
 /* Zaktualizowany CSS */
 .comarkup-framework-badge {
-    opacity: 0.8;
+    opacity: 0.9;
     position: absolute;
-    top: 5px;
-    left: 5px;
-    padding: 8px 12px;
-    border-radius: 6px;
-    font-size: 12px;
-    font-weight: bold;
+    top: 0px;
+    left: 0px;
+    padding: 2px 3px;
+    border-radius: 5px;
+    border: 1px solid white;
     display: flex;
     align-items: center;
     gap: 12px;
     background-color: rgba(0, 0, 0, 0.8);
     backdrop-filter: blur(4px);
     transition: all 0.3s ease;
-    min-width: 140px;
+    max-width: 200px;
 }
 
 .comarkup-framework-badge .framework-name {
     min-width: 60px;
+    font-weight: bold;
+    font-size: 16px;
 }
 
 .comarkup-actions {

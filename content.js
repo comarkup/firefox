@@ -93,7 +93,8 @@ class CoMarkupRenderer {
                 right: 0;
                 display: flex;
                 align-items: center;
-                padding: 8px;
+                padding: 3px;
+                border: 1px solid white;
                 background: rgba(0, 0, 0, 0.8);
                 border-radius: 0 0 0 8px;
                 z-index: 100;

@@ -308,6 +308,7 @@ function highlightCode(code) {
         .replace(/(\/\/[^\n]*|\/\*[\s\S]*?\*\/)/g, '<span class="token comment">$1</span>');
 }
 
+
 function getFrameworkWrapper(framework, code) {
     const config = FrameworkDetector.getFrameworkConfig(framework);
 
@@ -332,11 +333,11 @@ function getFrameworkWrapper(framework, code) {
         case 'vue':
             return `
                 const app = Vue.createApp({
-                    setup() {
-                        return () => {
+                    template: \`
+                        <div>
                             ${code}
-                        }
-                    }
+                        </div>
+                    \`
                 });
                 app.mount('.preview-content');
             `;
