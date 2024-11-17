@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Framework Renderer</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .framework-section {
+            background: white;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        h2 {
+            color: #333;
+            border-bottom: 2px solid #eee;
+            padding-bottom: 10px;
+        }
+        button {
+            background: #4CAF50;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 10px 0;
+        }
+        button:hover {
+            background: #45a049;
+        }
+        .result {
+            margin-top: 20px;
+        }
+        .result img {
+            max-width: 100%;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        pre {
+            background: #f8f8f8;
+            padding: 15px;
+            border-radius: 4px;
+            overflow-x: auto;
+        }
+    </style>
+</head>
+<body>
+    <h1>Framework Component Renderer</h1>
+    
+    <div class="framework-section">
+        <h2>Vue.js Counter</h2>
+        <button onclick="renderVue()">Render Vue Component</button>
+        <div id="vue-result" class="result"></div>
+    </div>
+
+    <div class="framework-section">
+        <h2>React Counter</h2>
+        <button onclick="renderReact()">Render React Component</button>
+        <div id="react-result" class="result"></div>
+    </div>
+
+    <div class="framework-section">
+        <h2>Angular Counter</h2>
+        <button onclick="renderAngular()">Render Angular Component</button>
+        <div id="angular-result" class="result"></div>
+    </div>
+
+    <div class="framework-section">
+        <h2>Vanilla JS Counter</h2>
+        <button onclick="renderVanilla()">Render Vanilla Component</button>
+        <div id="vanilla-result" class="result"></div>
+    </div>
+
+    <script>
+        async function renderComponent(framework, code) {
+            const resultDiv = document.getElementById(`${framework}-result`);
+            resultDiv.innerHTML = 'Rendering...';
+
+            try {
+                const response = await fetch(`http://localhost:3000/render/${framework}`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(code)
+                });
+
+                const data = await response.json();
+                
+                if (data.error) {
+                    throw new Error(data.error);
+                }
+
+                resultDiv.innerHTML = `
+                    <h3>Rendered Result:</h3>
+                    <img src="${data.screenshot}" alt="Rendered ${framework} Component">
+                    <h3>Code Used:</h3>
+                    <pre>${JSON.stringify(code, null, 2)}</pre>
+                `;
+            } catch (error) {
+                resultDiv.innerHTML = `<p style="color: red">Error: ${error.message}</p>`;
+            }
+        }
+
+        function renderVue() {
+            renderComponent('vue', {
+                content: `
+                    <div class="counter">
+                        <h1>Vue Counter: {{ count }}</h1>
+                        <button @click="increment">Increment</button>
+                        <button @click="decrement">Decrement</button>
+                    </div>
+                `,
+                script: `
+                    createApp({
+                        setup() {
+                            const count = ref(0);
+                            const increment = () => count.value++;
+                            const decrement = () => count.value--;
+                            return { count, increment, decrement };
+                        }
+                    }).mount('#app')
+                `,
+                style: `
+                    .counter {
+                        text-align: center;
+                        padding: 20px;
+                    }
+                    .counter button {
+                        margin: 0 5px;
+                        padding: 8px 16px;
+                        background: #42b883;
+                        color: white;
+                        border: none;
+                        border-radius: 4px;
+                        cursor: pointer;
+                    }
+                    .counter button:hover {
+                        background: #3aa876;
+                    }
+                `
+            });
+        }
+
+        function renderReact() {
+            renderComponent('react', {
+                script: `
+                    function App() {
+                        const [count, setCount] = React.useState(0);
+                        
+                        return (
+                            <div className="counter">
+                                <h1>React Counter: {count}</h1>
+                                <button onClick={() => setCount(count + 1)}>Increment</button>
+                                <button onClick={() => setCount(count - 1)}>Decrement</button>
+                            </div>
+                        );
+                    }
+                `,
+                style: `
+                    .counter {
+                        text-align: center;
+                        padding: 20px;
+                    }
+                    .counter button {
+                        margin: 0 5px;
+                        padding: 8px 16px;
+                        background: #61dafb;
+                        color: white;
+                        border: none;
+                        border-radius: 4px;
+                        cursor: pointer;
+                    }
+                    .counter button:hover {
+                        background: #4fa8c7;
+                    }
+                `
+            });
+        }
+
+        function renderAngular() {
+            renderComponent('angular', {
+                content: `
+                    <div class="counter">
+                        <h1>Angular Counter: {{count}}</h1>
+                        <button (click)="increment()">Increment</button>
+                        <button (click)="decrement()">Decrement</button>
+                    </div>
+                `,
+                script: `
+                    class AppComponent {
+                        constructor() {
+                            this.count = 0;
+                        }
+                        increment() {
+                            this.count++;
+                        }
+                        decrement() {
+                            this.count--;
+                        }
+                    }
+
+                    // Apply component decorator
+                    Component({
+                        selector: 'app-root',
+                        template: document.getElementById('app-template').textContent
+                    })(AppComponent);
+
+                    // Create and decorate module
+                    @NgModule({
+                        imports: [BrowserModule],
+                        declarations: [AppComponent],
+                        bootstrap: [AppComponent]
+                    })
+                    class AppModule {}
+
+                    // Export for bootstrapping
+                    window.AppComponent = AppComponent;
+                    window.AppModule = AppModule;
+                `,
+                style: `
+                    .counter {
+                        text-align: center;
+                        padding: 20px;
+                    }
+                    .counter button {
+                        margin: 0 5px;
+                        padding: 8px 16px;
+                        background: #dd1b16;
+                        color: white;
+                        border: none;
+                        border-radius: 4px;
+                        cursor: pointer;
+                    }
+                    .counter button:hover {
+                        background: #c41810;
+                    }
+                `
+            });
+        }
+
+        function renderVanilla() {
+            renderComponent('vanilla', {
+                content: `
+                    <div class="counter">
+                        <h1>Vanilla Counter: <span id="count">0</span></h1>
+                        <button onclick="increment()">Increment</button>
+                        <button onclick="decrement()">Decrement</button>
+                    </div>
+                `,
+                script: `
+                    let count = 0;
+                    const countElement = document.getElementById('count');
+
+                    function increment() {
+                        count++;
+                        countElement.textContent = count;
+                    }
+
+                    function decrement() {
+                        count--;
+                        countElement.textContent = count;
+                    }
+                `,
+                style: `
+                    .counter {
+                        text-align: center;
+                        padding: 20px;
+                    }
+                    .counter button {
+                        margin: 0 5px;
+                        padding: 8px 16px;
+                        background: #666;
+                        color: white;
+                        border: none;
+                        border-radius: 4px;
+                        cursor: pointer;
+                    }
+                    .counter button:hover {
+                        background: #555;
+                    }
+                `
+            });
+        }
+    </script>
+</body>
+</html>

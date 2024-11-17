@@ -26,12 +26,8 @@ class CoMarkupRenderer {
         console.log('[CoMarkup] Starting initialization');
         this.setupMutationObserver();
         this.processExistingCodeBlocks();
-        this.pendingRender = null;
-        this.popup = null;
-        this.setupMessageListener();
         console.log('[CoMarkup] Initialization complete');
     }
-
 
     setupMutationObserver() {
         console.log('[CoMarkup] Setting up mutation observer');
@@ -60,7 +56,6 @@ class CoMarkupRenderer {
         this.processCodeBlocks(document.body);
     }
 
-
     enhanceCodeBlock(block) {
         console.log('[CoMarkup] Enhancing code block:', block);
         console.log('[CoMarkup] Code content length:', block.textContent.length);
@@ -84,7 +79,7 @@ class CoMarkupRenderer {
         const badge = document.createElement('div');
         badge.className = 'comarkup-framework-badge';
 
-        // Add styles for the badge
+        // Add styles for the badge and preview
         const style = document.createElement('style');
         style.textContent = `
             .comarkup-framework-badge {
@@ -140,6 +135,57 @@ class CoMarkupRenderer {
             pre {
                 position: relative;
             }
+            .comarkup-preview {
+                position: fixed;
+                top: 50%;
+                left: 50%;
+                transform: translate(-50%, -50%);
+                width: 90%;
+                height: 90%;
+                max-width: 1200px;
+                background: white;
+                border-radius: 8px;
+                box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+                z-index: 999999;
+                overflow: hidden;
+            }
+            .comarkup-preview-overlay {
+                position: fixed;
+                top: 0;
+                left: 0;
+                right: 0;
+                bottom: 0;
+                background: rgba(0, 0, 0, 0.5);
+                z-index: 999998;
+            }
+            .comarkup-preview img {
+                width: 100%;
+                height: 100%;
+                object-fit: contain;
+            }
+            .comarkup-notification {
+                position: fixed;
+                bottom: 20px;
+                right: 20px;
+                padding: 10px 20px;
+                border-radius: 4px;
+                color: white;
+                font-size: 14px;
+                opacity: 0;
+                transform: translateY(20px);
+                transition: opacity 0.3s, transform 0.3s;
+                z-index: 999999;
+            }
+            .comarkup-notification.success {
+                background: #4CAF50;
+            }
+            .comarkup-notification.error {
+                background: #f44336;
+            }
+            .comarkup-notification.show {
+                opacity: 1;
+                transform: translateY(0);
+            }
         `;
         document.head.appendChild(style);
         console.log('[CoMarkup] Added badge styles');
@@ -158,7 +204,7 @@ class CoMarkupRenderer {
         console.log('[CoMarkup] Setting up badge event listeners');
         renderIcon.addEventListener('click', () => {
             console.log('[CoMarkup] Render icon clicked');
-            this.renderCode(block.textContent, analysis.framework);
+            this.renderCode(block.textContent, analysis.framework.toLowerCase());
         });
         copyIcon.addEventListener('click', () => {
             console.log('[CoMarkup] Copy icon clicked');
@@ -220,146 +266,6 @@ class CoMarkupRenderer {
         });
     }
 
-    setupMessageListener() {
-        browser.runtime.onMessage.addListener((message) => {
-            console.log('[CoMarkup] Received message:', message);
-
-            // Return a promise that resolves immediately
-            return Promise.resolve((async () => {
-                try {
-                    switch (message.type) {
-                        case 'POPUP_READY':
-                            if (this.pendingRender) {
-                                await this.sendCodeToPopup(this.pendingRender.code, this.pendingRender.framework);
-                            }
-                            return { success: true };
-
-                        case 'RENDER_COMPLETE':
-                            this.showNotification('Preview rendered successfully!');
-                            this.pendingRender = null;
-                            return { success: true };
-
-                        case 'RENDER_ERROR':
-                            console.error('[CoMarkup] Render error:', message.error);
-                            this.showNotification(message.error, 'error');
-                            this.pendingRender = null;
-                            return { success: true };
-
-                        case 'POPUP_CLOSED':
-                            this.closePopup();
-                            return { success: true };
-
-                        default:
-                            return { error: 'Unknown message type' };
-                    }
-                } catch (error) {
-                    console.error('[CoMarkup] Error handling message:', error);
-                    return { error: error.message };
-                }
-            })());
-        });
-    }
-
-    createPopup() {
-        if (this.popup) {
-            return;
-        }
-
-        // Create popup container
-        const container = document.createElement('div');
-        container.className = 'comarkup-popup-container';
-        container.innerHTML = `
-            <div class="comarkup-popup-overlay"></div>
-            <div class="comarkup-popup">
-                <iframe src="${browser.runtime.getURL('popup.html')}" frameborder="0"></iframe>
-            </div>
-        `;
-
-        // Add styles
-        const style = document.createElement('style');
-        style.textContent = `
-            .comarkup-popup-container {
-                position: fixed;
-                top: 0;
-                left: 0;
-                right: 0;
-                bottom: 0;
-                z-index: 999999;
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                opacity: 0;
-                transition: opacity 0.3s ease;
-            }
-            .comarkup-popup-container.visible {
-                opacity: 1;
-            }
-            .comarkup-popup-overlay {
-                position: absolute;
-                top: 0;
-                left: 0;
-                right: 0;
-                bottom: 0;
-                background: rgba(0, 0, 0, 0.5);
-            }
-            .comarkup-popup {
-                position: relative;
-                width: 90%;
-                height: 90%;
-                max-width: 1200px;
-                max-height: 800px;
-                background: white;
-                border-radius: 8px;
-                overflow: hidden;
-                box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
-                transform: translateY(20px);
-                transition: transform 0.3s ease;
-            }
-            .comarkup-popup-container.visible .comarkup-popup {
-                transform: translateY(0);
-            }
-            .comarkup-popup iframe {
-                width: 100%;
-                height: 100%;
-                border: none;
-            }
-        `;
-        document.head.appendChild(style);
-
-        // Add click handler to close on overlay click
-        container.querySelector('.comarkup-popup-overlay').addEventListener('click', () => {
-            this.closePopup();
-        });
-
-        document.body.appendChild(container);
-        this.popup = container;
-
-        // Trigger animation after a brief delay
-        requestAnimationFrame(() => {
-            container.classList.add('visible');
-        });
-    }
-
-    closePopup() {
-        if (this.popup) {
-            // Trigger closing animation
-            this.popup.classList.remove('visible');
-
-            // Remove after animation completes
-            setTimeout(() => {
-                this.popup.remove();
-                this.popup = null;
-                this.pendingRender = null;
-
-                // Notify background script
-                browser.runtime.sendMessage({ type: 'POPUP_CLOSED' }).catch(error => {
-                    console.error('[CoMarkup] Error sending POPUP_CLOSED message:', error);
-                });
-            }, 300);
-        }
-    }
-
-
     async copyToClipboard(code) {
         try {
             await navigator.clipboard.writeText(code);
@@ -386,89 +292,58 @@ class CoMarkupRenderer {
         console.log('[CoMarkup] Starting render process', { framework });
 
         try {
-            // Store the pending render
-            this.pendingRender = {
-                code,
-                framework
+            // Map framework names to server endpoints
+            const frameworkMap = {
+                'vanilla': 'vanilla',
+                'vanilla js': 'vanilla',
+                'javascript': 'vanilla',
+                'vue': 'vue',
+                'vue.js': 'vue',
+                'react': 'react',
+                'angular': 'angular'
             };
 
-            // Create and show the popup
-            this.createPopup();
+            const endpoint = frameworkMap[framework.toLowerCase()] || 'vanilla';
+            
+            const response = await fetch(`http://localhost:3000/render/${endpoint}`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    script: code,
+                    style: '', // Add any extracted styles here if needed
+                    content: '' // Add any extracted HTML content here if needed
+                })
+            });
 
-            // Request popup initialization from background script
-            const response = await browser.runtime.sendMessage({ type: 'OPEN_POPUP' });
-
-            if (response.error) {
-                throw new Error(response.error);
+            if (!response.ok) {
+                const error = await response.json();
+                throw new Error(error.details || 'Failed to render code');
             }
 
+            const data = await response.json();
+
+            // Create preview overlay and container
+            const overlay = document.createElement('div');
+            overlay.className = 'comarkup-preview-overlay';
+            document.body.appendChild(overlay);
+
+            const preview = document.createElement('div');
+            preview.className = 'comarkup-preview';
+            preview.innerHTML = `<img src="http://localhost:3000${data.screenshot}" alt="Rendered preview">`;
+            document.body.appendChild(preview);
+
+            // Close preview when clicking overlay
+            overlay.addEventListener('click', () => {
+                overlay.remove();
+                preview.remove();
+            });
+
+            this.showNotification('Code rendered successfully!');
         } catch (error) {
             console.error('[CoMarkup] Error:', error);
             this.showNotification(error.message, 'error');
-            this.pendingRender = null;
-            this.closePopup();
         }
     }
-
-    async sendCodeToPopup(code, framework) {
-        try {
-            const response = await browser.runtime.sendMessage({
-                type: 'RENDER_CODE',
-                payload: {
-                    code: this.extractCodeFromHTML(code),
-                    framework,
-                    originalContent: code
-                }
-            });
-
-            if (response.error) {
-                throw new Error(response.error);
-            }
-
-        } catch (error) {
-            console.error('[CoMarkup] Error sending code to popup:', error);
-            this.showNotification('Failed to send code to preview', 'error');
-            this.pendingRender = null;
-            this.closePopup();
-        }
-    }
-
-    extractCodeFromHTML(content) {
-        if (!content) {
-            console.warn('[CoMarkup] No content to extract');
-            return '';
-        }
-
-        console.log('[CoMarkup] Original content:', {
-            length: content.length,
-            preview: content.substring(0, 100)
-        });
-
-        const codeMatch = content.match(/<code[^>]*>([\s\S]*?)<\/code>/i) ||
-            content.match(/<pre[^>]*>([\s\S]*?)<\/pre>/i);
-
-        if (codeMatch) {
-            const cleanCode = codeMatch[1]
-                .replace(/<[^>]+>/g, '')
-                .replace(/&lt;/g, '<')
-                .replace(/&gt;/g, '>')
-                .replace(/&amp;/g, '&')
-                .replace(/&quot;/g, '"')
-                .replace(/&#39;/g, "'")
-                .trim();
-
-            console.log('[CoMarkup] Extracted code:', {
-                length: cleanCode.length,
-                preview: cleanCode.substring(0, 100)
-            });
-
-            return cleanCode;
-        }
-
-        console.log('[CoMarkup] Using original content as code');
-        return content.trim();
-    }
-
 }
-
-// Note: Don't initialize here anymore, it's done after detector.js loads

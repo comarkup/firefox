@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>React App</title>
+    <script src="/frameworks/react.development.js"></script>
+    <script src="/frameworks/react-dom.development.js"></script>
+    <script src="/frameworks/babel.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f0f0f0;
+        }
+        #root {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+    </style>
+    <!-- STYLE_PLACEHOLDER -->
+</head>
+<body>
+    <div id="root"></div>
+    <script type="text/babel">
+        // SCRIPT_PLACEHOLDER
+        
+        // Default render function
+        const rootElement = document.getElementById('root');
+        const root = ReactDOM.createRoot(rootElement);
+        root.render(<App />);
+    </script>
+</body>
+</html>

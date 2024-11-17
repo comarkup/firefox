@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Angular App</title>
+    <script src="/frameworks/reflect.js"></script>
+    <script src="/frameworks/zone.min.js"></script>
+    <script src="/frameworks/rxjs.umd.js"></script>
+    <script src="/frameworks/angular-core.umd.js"></script>
+    <script src="/frameworks/angular-common.umd.js"></script>
+    <script src="/frameworks/angular-compiler.umd.js"></script>
+    <script src="/frameworks/angular-platform-browser.umd.js"></script>
+    <script src="/frameworks/angular-platform-browser-dynamic.umd.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f0f0f0;
+        }
+        app-root {
+            display: block;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+    </style>
+    <!-- STYLE_PLACEHOLDER -->
+    <script type="text/ng-template" id="app-template">
+        <!-- CONTENT_PLACEHOLDER -->
+    </script>
+</head>
+<body>
+    <app-root></app-root>
+    <script>
+        // Initialize Angular modules
+        const { 
+            Component, 
+            NgModule, 
+            enableProdMode 
+        } = ng.core;
+        
+        const { 
+            BrowserModule 
+        } = ng.platformBrowser;
+        
+        const { 
+            platformBrowserDynamic 
+        } = ng.platformBrowserDynamic;
+
+        // Enable production mode
+        enableProdMode();
+
+        // SCRIPT_PLACEHOLDER
+
+        // Default component if not defined
+        if (typeof AppComponent === 'undefined') {
+            class AppComponent {
+                constructor() {
+                    this.count = 0;
+                }
+                increment() {
+                    this.count++;
+                }
+                decrement() {
+                    this.count--;
+                }
+            }
+            
+            Component({
+                selector: 'app-root',
+                template: document.getElementById('app-template').textContent
+            })(AppComponent);
+
+            window.AppComponent = AppComponent;
+        }
+
+        // Default module if not defined
+        if (typeof AppModule === 'undefined') {
+            @NgModule({
+                imports: [BrowserModule],
+                declarations: [AppComponent],
+                bootstrap: [AppComponent]
+            })
+            class AppModule {}
+            window.AppModule = AppModule;
+        }
+
+        // Bootstrap the application
+        platformBrowserDynamic()
+            .bootstrapModule(AppModule)
+            .catch(err => console.error('Angular bootstrap error:', err));
+    </script>
+</body>
+</html>
