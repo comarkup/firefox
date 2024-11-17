@@ -13,26 +13,6 @@ app.use(express.json());
 // Serve static files from the server directory
 app.use(express.static(__dirname));
 
-// Map framework files to their correct paths
-const frameworkFiles = {
-    vue: '/frameworks/vue.development.js',
-    react: [
-        '/frameworks/react.development.js',
-        '/frameworks/react-dom.development.js',
-        '/frameworks/babel.min.js'
-    ],
-    angular: [
-        '/frameworks/reflect.js',
-        '/frameworks/zone.min.js',
-        '/frameworks/rxjs.umd.js',
-        '/frameworks/angular-core.umd.js',
-        '/frameworks/angular-common.umd.js',
-        '/frameworks/angular-compiler.umd.js',
-        '/frameworks/angular-platform-browser.umd.js',
-        '/frameworks/angular-platform-browser-dynamic.umd.js'
-    ]
-};
-
 // Serve framework files from the parent directory
 app.use('/frameworks', express.static(path.join(__dirname, '..', 'frameworks')));
 
@@ -98,14 +78,19 @@ app.post('/render/:framework', async (req, res) => {
         page.on('console', msg => console.log('Page console:', msg.text()));
         page.on('error', err => console.error('Page error:', err));
         page.on('pageerror', err => console.error('Page error:', err));
+
+        // Set longer timeout for resource loading
+        await page.setDefaultNavigationTimeout(30000);
+        await page.setDefaultTimeout(30000);
         
         // Set content and wait for everything to load
         await page.setContent(html, { 
-            waitUntil: ['load', 'domcontentloaded', 'networkidle0']
+            waitUntil: ['load', 'domcontentloaded', 'networkidle0'],
+            timeout: 30000
         });
         
-        // Wait for framework initialization
-        await page.waitForTimeout(2000);
+        // Wait for framework initialization and any animations
+        await page.waitForTimeout(3000);
         
         // Take screenshot
         const timestamp = Date.now();

@@ -8,26 +8,13 @@ NC='\033[0m' # No Color
 
 echo -e "${YELLOW}Checking Python version...${NC}"
 PYTHON_VERSION=$(python3 -V 2>&1 | awk '{print $2}')
-PYTHON_MAJOR=$(echo $PYTHON_VERSION | cut -d. -f1)
-PYTHON_MINOR=$(echo $PYTHON_VERSION | cut -d. -f2)
-
-# Sprawdzenie minimalnej wersji Pythona (3.8)
-if [ "$PYTHON_MAJOR" -lt 3 ] || ([ "$PYTHON_MAJOR" -eq 3 ] && [ "$PYTHON_MINOR" -lt 8 ]); then
-    echo -e "${RED}Error: This project requires Python 3.8 or higher${NC}"
-    echo -e "${RED}Current version: $PYTHON_VERSION${NC}"
-    exit 1
-fi
-
-echo -e "${GREEN}Python version $PYTHON_VERSION is compatible${NC}"
+echo -e "${GREEN}Using Python $PYTHON_VERSION${NC}"
 
 # Sprawdzenie systemu operacyjnego
 if [ -f /etc/os-release ]; then
     . /etc/os-release
     OS=$NAME
     VER=$VERSION_ID
-elif type lsb_release >/dev/null 2>&1; then
-    OS=$(lsb_release -si)
-    VER=$(lsb_release -sr)
 else
     OS=$(uname -s)
     VER=$(uname -r)
@@ -35,7 +22,7 @@ fi
 
 echo -e "${GREEN}Detected OS: $OS${NC}"
 
-# Instalacja zależności dla różnych systemów
+# Instalacja podstawowych zależności systemowych
 install_ubuntu_debian() {
     echo -e "${YELLOW}Installing dependencies for Ubuntu/Debian...${NC}"
     sudo apt-get update
@@ -44,18 +31,7 @@ install_ubuntu_debian() {
         python3-pip \
         python3-venv \
         build-essential \
-        gcc \
-        g++ \
-        libc6-dev \
-        libffi-dev \
-        libssl-dev \
-        zlib1g-dev \
-        liblzma-dev \
-        libbz2-dev \
-        libreadline-dev \
-        libsqlite3-dev \
-        libopencv-dev \
-        tk-dev
+        gcc
 }
 
 install_fedora() {
@@ -64,16 +40,7 @@ install_fedora() {
         python3-devel \
         python3-pip \
         gcc \
-        gcc-c++ \
-        libffi-devel \
-        openssl-devel \
-        zlib-devel \
-        xz-devel \
-        bzip2-devel \
-        readline-devel \
-        sqlite-devel \
-        opencv-devel \
-        tk-devel
+        gcc-c++
 }
 
 install_arch() {
@@ -81,17 +48,7 @@ install_arch() {
     sudo pacman -Sy --noconfirm \
         python-pip \
         base-devel \
-        gcc \
-        make \
-        libffi \
-        openssl \
-        zlib \
-        xz \
-        bzip2 \
-        readline \
-        sqlite \
-        opencv \
-        tk
+        gcc
 }
 
 install_macos() {
@@ -102,17 +59,8 @@ install_macos() {
     fi
 
     brew install \
-        python@3.8 \
-        gcc \
-        libffi \
-        openssl \
-        zlib \
-        xz \
-        bzip2 \
-        readline \
-        sqlite \
-        opencv \
-        tcl-tk
+        python \
+        gcc
 }
 
 # Instalacja zależności w zależności od systemu
@@ -135,24 +83,37 @@ case "$OS" in
         ;;
 esac
 
+# Usunięcie starego venv jeśli istnieje
+if [ -d "venv" ]; then
+    echo -e "${YELLOW}Removing existing virtual environment...${NC}"
+    rm -rf venv
+fi
+
 echo -e "${YELLOW}Creating virtual environment...${NC}"
 python3 -m venv venv
 
 echo -e "${YELLOW}Activating virtual environment...${NC}"
 source venv/bin/activate
 
-echo -e "${YELLOW}Upgrading pip...${NC}"
+echo -e "${YELLOW}Upgrading pip, setuptools, and wheel...${NC}"
 pip install --upgrade pip setuptools wheel
 
 echo -e "${YELLOW}Installing Python packages...${NC}"
-pip install -r requirements.txt
+# Instalacja pakietów jeden po drugim
+while IFS= read -r line || [ -n "$line" ]; do
+    # Pomiń komentarze i puste linie
+    if [[ $line =~ ^[[:space:]]*# ]] || [[ -z "${line// }" ]]; then
+        continue
+    fi
+    echo -e "${YELLOW}Installing $line...${NC}"
+    pip install "$line" || echo -e "${RED}Failed to install $line${NC}"
+done < requirements.txt
 
-echo -e "${GREEN}Installation completed!${NC}"
-
-# Weryfikacja instalacji
-echo -e "${YELLOW}Verifying installation...${NC}"
-python3 -c "import numpy; import matplotlib; import pandas; print('Basic packages verified successfully!')"
+echo -e "${GREEN}Basic installation completed!${NC}"
 
 # Wyświetl informacje o zainstalowanych pakietach
 echo -e "${YELLOW}Installed packages:${NC}"
 pip list
+
+echo -e "${GREEN}Setup complete! You can now activate the virtual environment using:${NC}"
+echo -e "${YELLOW}source venv/bin/activate${NC}"

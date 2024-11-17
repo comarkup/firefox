@@ -2,9 +2,9 @@
 <html>
 <head>
     <title>React App</title>
-    <script src="/frameworks/react.development.js"></script>
-    <script src="/frameworks/react-dom.development.js"></script>
-    <script src="/frameworks/babel.min.js"></script>
+    <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/babel-standalone@6/babel.min.js"></script>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -22,12 +22,21 @@
 <body>
     <div id="root"></div>
     <script type="text/babel">
-        // SCRIPT_PLACEHOLDER
-        
-        // Default render function
-        const rootElement = document.getElementById('root');
-        const root = ReactDOM.createRoot(rootElement);
-        root.render(<App />);
+        // Wait for React to load
+        window.onload = function() {
+            // SCRIPT_PLACEHOLDER
+            
+            // Default render function if not provided
+            if (typeof App === 'undefined') {
+                function App() {
+                    return <div>React App</div>;
+                }
+            }
+            
+            const rootElement = document.getElementById('root');
+            const root = ReactDOM.createRoot(rootElement);
+            root.render(<App />);
+        }
     </script>
 </body>
 </html>
