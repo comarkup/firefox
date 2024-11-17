@@ -2,6 +2,7 @@ const DEBUG = true;
 let currentCode = '';
 let popupInitialized = false;
 let parentTabId = null;
+let currentFramework = null;
 
 // Debug steps definition
 const STEPS = {
@@ -147,13 +148,6 @@ const DebugLogger = {
     }
 };
 
-// Helper functions
-function debugLog(message, status = 'pending', data = null) {
-    const timestamp = Date.now();
-    console.log(`[CoMarkup Popup] ${message}`, data);
-    DebugLogger.updateStep(`${timestamp}-${message}`, status, data);
-}
-
 async function handleCopy() {
     try {
         await navigator.clipboard.writeText(currentCode);
@@ -179,11 +173,125 @@ function loadScript(src) {
     });
 }
 
-function formatCode(code) {
-    if (!code) return '';
-    return code
-        .replace(/^\s+|\s+$/g, '')
-        .replace(/\n\s+/g, '\n  ');
+function createEditableEditor() {
+    const editor = document.getElementById('editor');
+    if (!editor) return;
+
+    // Create editable textarea
+    const textarea = document.createElement('textarea');
+    textarea.className = 'code-editor-textarea';
+    textarea.spellcheck = false;
+    textarea.value = currentCode;
+
+    // Create pre element for syntax highlighting
+    const pre = document.createElement('pre');
+    pre.className = 'code-editor-highlighting';
+    const code = document.createElement('code');
+    pre.appendChild(code);
+
+    // Add line numbers
+    const lineNumbers = document.createElement('div');
+    lineNumbers.className = 'line-numbers';
+
+    // Add all elements to editor
+    editor.appendChild(lineNumbers);
+    editor.appendChild(pre);
+    editor.appendChild(textarea);
+
+    // Add styles for the editable setup
+    const style = document.createElement('style');
+    style.textContent = `
+        .code-editor {
+            position: relative;
+            height: 100%;
+            overflow: auto;
+            background: #1e1e1e;
+            font-family: 'Fira Code', 'Consolas', monospace;
+        }
+        .code-editor-textarea {
+            position: absolute;
+            top: 0;
+            left: 40px;
+            width: calc(100% - 40px);
+            height: 100%;
+            padding: 15px;
+            border: none;
+            background: transparent;
+            color: #d4d4d4;
+            font-family: inherit;
+            font-size: 14px;
+            line-height: 1.5;
+            resize: none;
+            outline: none;
+            white-space: pre;
+            overflow: auto;
+            tab-size: 4;
+        }
+        .code-editor-highlighting {
+            position: absolute;
+            top: 0;
+            left: 40px;
+            width: calc(100% - 40px);
+            height: 100%;
+            padding: 15px;
+            pointer-events: none;
+            white-space: pre;
+            font-size: 14px;
+            line-height: 1.5;
+        }
+        .line-numbers {
+            position: absolute;
+            left: 0;
+            top: 0;
+            width: 40px;
+            height: 100%;
+            padding: 15px 0;
+            background: #1e1e1e;
+            border-right: 1px solid #404040;
+            color: #858585;
+            font-size: 14px;
+            line-height: 1.5;
+            text-align: right;
+            user-select: none;
+        }
+        .line-number {
+            padding-right: 8px;
+        }
+    `;
+    document.head.appendChild(style);
+
+    // Handle textarea input
+    let updateTimeout;
+    textarea.addEventListener('input', () => {
+        currentCode = textarea.value;
+
+        // Update syntax highlighting
+        code.innerHTML = highlightCode(currentCode);
+
+        // Update line numbers
+        updateLineNumbers(lineNumbers, currentCode);
+
+        // Debounce preview update
+        clearTimeout(updateTimeout);
+        updateTimeout = setTimeout(() => {
+            const analysis = FrameworkDetector.analyzeCode(currentCode);
+            processCode({
+                code: currentCode,
+                framework: analysis.framework
+            });
+        }, 500);
+    });
+
+    // Initial render
+    code.innerHTML = highlightCode(currentCode);
+    updateLineNumbers(lineNumbers, currentCode);
+}
+
+function updateLineNumbers(lineNumbers, code) {
+    const lines = code.split('\n');
+    lineNumbers.innerHTML = lines.map((_, i) =>
+        `<div class="line-number">${i + 1}</div>`
+    ).join('');
 }
 
 function highlightCode(code) {
@@ -200,46 +308,9 @@ function highlightCode(code) {
         .replace(/(\/\/[^\n]*|\/\*[\s\S]*?\*\/)/g, '<span class="token comment">$1</span>');
 }
 
-function addLineNumbers(editor) {
-    const lines = editor.querySelector('pre').innerText.split('\n');
-    const lineNumbers = document.createElement('div');
-    lineNumbers.className = 'line-numbers';
-
-    lines.forEach((_, index) => {
-        const lineNumber = document.createElement('div');
-        lineNumber.className = 'line-number';
-        lineNumber.textContent = index + 1;
-        lineNumbers.appendChild(lineNumber);
-    });
-
-    editor.insertBefore(lineNumbers, editor.firstChild);
-}
-
-async function initializeEditor(code, originalContent) {
-    if (!code) {
-        DebugLogger.updateStep('editor-init', 'error', 'No code provided');
-        throw new Error('No code provided');
-    }
-
-    const editor = document.getElementById('editor');
-    if (!editor) {
-        DebugLogger.updateStep('editor-init', 'error', 'Editor element not found');
-        throw new Error('Editor element not found');
-    }
-
-    try {
-        currentCode = code;
-        const formattedCode = originalContent || formatCode(code);
-        editor.innerHTML = `<pre><code>${highlightCode(formattedCode)}</code></pre>`;
-        addLineNumbers(editor);
-        DebugLogger.updateStep('editor-init', 'success');
-    } catch (error) {
-        DebugLogger.updateStep('editor-init', 'error', error.message);
-        throw error;
-    }
-}
-
 function getFrameworkWrapper(framework, code) {
+    const config = FrameworkDetector.getFrameworkConfig(framework);
+
     switch (framework) {
         case 'react':
             return `
@@ -305,58 +376,83 @@ function setupUI() {
 
 async function processCode({ code, framework, originalContent }) {
     try {
+        console.log('[Popup] Processing code for framework:', framework);
         DebugLogger.updateStep(STEPS.CODE_PROCESSING, 'pending');
-        await initializeEditor(code, originalContent);
-        DebugLogger.updateStep(STEPS.CODE_PROCESSING, 'success');
+        currentFramework = framework;
+        currentCode = code;
 
-        const config = frameworkConfig[framework];
+        if (!popupInitialized) {
+            createEditableEditor();
+            popupInitialized = true;
+        }
+
+        const config = FrameworkDetector.getFrameworkConfig(framework);
+        console.log('[Popup] Using framework config:', config);
         DebugLogger.updateStep(STEPS.SCRIPTS_LOAD, 'pending', {
             framework,
             scriptsCount: config.scripts.length
         });
 
+        // Load framework scripts if not already loaded
         for (const src of config.scripts) {
-            try {
-                await loadScript(src);
-                DebugLogger.updateStep(`script-${src}`, 'success');
-            } catch (error) {
-                DebugLogger.updateStep(`script-${src}`, 'error', error.message);
-                throw error;
+            if (!document.querySelector(`script[src="${src}"]`)) {
+                try {
+                    console.log('[Popup] Loading script:', src);
+                    await loadScript(src);
+                    DebugLogger.updateStep(`script-${src}`, 'success');
+                } catch (error) {
+                    console.error('[Popup] Script load error:', error);
+                    DebugLogger.updateStep(`script-${src}`, 'error', error.message);
+                    throw error;
+                }
             }
         }
         DebugLogger.updateStep(STEPS.SCRIPTS_LOAD, 'success');
 
+        console.log('[Popup] Preparing to render code');
         DebugLogger.updateStep(STEPS.RENDERING, 'pending');
         const root = document.getElementById('root');
         root.innerHTML = '<div class="preview-content"></div>';
 
         const wrappedCode = getFrameworkWrapper(framework, code);
+        console.log('[Popup] Wrapped code ready for execution');
+
         if (framework === 'react') {
+            console.log('[Popup] Transforming React code with Babel');
             const transformed = Babel.transform(wrappedCode, { presets: ['react'] }).code;
             eval(transformed);
         } else {
             eval(wrappedCode);
         }
 
+        console.log('[Popup] Code rendered successfully');
         DebugLogger.updateStep(STEPS.RENDERING, 'success');
         DebugLogger.updateStep(STEPS.COMPLETION, 'success');
 
         // Notify of successful render
         browser.runtime.sendMessage({ type: 'RENDER_COMPLETE' });
     } catch (error) {
-        console.error('Processing error:', error);
+        console.error('[Popup] Processing error:', error);
         DebugLogger.updateStep(STEPS.COMPLETION, 'error', {
             message: error.message,
             phase: error.phase || 'unknown'
         });
+
+        // Show error in preview
+        const root = document.getElementById('root');
+        root.innerHTML = `
+            <div class="preview-content">
+                <div style="color: red; padding: 20px;">
+                    Error: ${error.message}
+                </div>
+            </div>
+        `;
 
         // Notify of render error
         browser.runtime.sendMessage({
             type: 'RENDER_ERROR',
             error: error.message
         });
-
-        throw error;
     }
 }
 
@@ -364,31 +460,43 @@ async function processCode({ code, framework, originalContent }) {
 browser.runtime.onMessage.addListener((message) => {
     console.log('[Popup Frame] Received message:', message);
 
-    switch (message.type) {
-        case 'INIT_POPUP':
-            parentTabId = message.tabId;
-            popupInitialized = true;
-            DebugLogger.updateStep('popup-initialized', 'success', { parentTabId });
-            browser.runtime.sendMessage({ type: 'POPUP_READY' });
-            break;
+    // Return a promise that resolves immediately
+    return Promise.resolve((async () => {
+        try {
+            switch (message.type) {
+                case 'INIT_POPUP':
+                    parentTabId = message.tabId;
+                    popupInitialized = false;
+                    DebugLogger.updateStep('popup-initialized', 'success', { parentTabId });
+                    await browser.runtime.sendMessage({ type: 'POPUP_READY' });
+                    return { success: true };
 
-        case 'RENDER_CODE':
-            console.log('[Popup Frame] Received code to render');
-            const { code, framework, originalContent } = message.payload;
+                case 'RENDER_CODE':
+                    console.log('[Popup Frame] Received code to render');
+                    const { code, framework, originalContent } = message.payload;
 
-            DebugLogger.updateStep(STEPS.CODE_RECEIVED, 'success', {
-                framework,
-                codeLength: code?.length || 0
-            });
+                    DebugLogger.updateStep(STEPS.CODE_RECEIVED, 'success', {
+                        framework,
+                        codeLength: code?.length || 0
+                    });
 
-            processCode({ code, framework, originalContent }).catch(error => {
-                console.error('[Popup Frame] Process error:', error);
-            });
-            break;
-    }
+                    try {
+                        await processCode({ code, framework, originalContent });
+                        console.log('[Popup Frame] Code processed successfully');
+                        return { success: true };
+                    } catch (error) {
+                        console.error('[Popup Frame] Process error:', error);
+                        return { error: error.message };
+                    }
 
-    // Always return true to indicate async response
-    return true;
+                default:
+                    return { error: 'Unknown message type' };
+            }
+        } catch (error) {
+            console.error('[Popup Frame] Error handling message:', error);
+            return { error: error.message };
+        }
+    })());
 });
 
 // Initialize on DOM load
@@ -401,8 +509,9 @@ document.addEventListener('DOMContentLoaded', () => {
     setupUI();
 
     // Notify background script that popup frame is loaded
-    browser.runtime.sendMessage({ type: 'POPUP_LOADED' }).catch(error => {
-        console.error('[Popup Frame] Error sending POPUP_LOADED message:', error);
-        DebugLogger.updateStep(STEPS.POPUP_READY, 'error', error.message);
-    });
+    browser.runtime.sendMessage({ type: 'POPUP_LOADED' })
+        .catch(error => {
+            console.error('[Popup Frame] Error sending POPUP_LOADED message:', error);
+            DebugLogger.updateStep(STEPS.POPUP_READY, 'error', error.message);
+        });
 });

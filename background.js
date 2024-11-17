@@ -1,5 +1,4 @@
 let activePopup = null;
-let pendingMessages = new Map();
 
 // Helper function to handle errors
 function handleError(error) {
@@ -11,13 +10,14 @@ function handleError(error) {
 async function sendToContent(tabId, message) {
     if (!tabId) {
         console.warn('[Background] No tab ID provided for content message');
-        return;
+        return { error: 'No tab ID provided' };
     }
 
     try {
         return await browser.tabs.sendMessage(tabId, message);
     } catch (error) {
         console.error('[Background] Error sending message to content:', error);
+        return { error: error.message };
     }
 }
 
@@ -25,7 +25,8 @@ async function sendToContent(tabId, message) {
 browser.runtime.onMessage.addListener((message, sender) => {
     console.log('[Background] Received message:', message, 'from:', sender);
 
-    return new Promise((resolve) => {
+    // Return a promise that resolves with the appropriate response
+    return Promise.resolve((async () => {
         try {
             switch (message.type) {
                 case 'OPEN_POPUP':
@@ -34,91 +35,95 @@ browser.runtime.onMessage.addListener((message, sender) => {
                         tabId: sender.tab.id,
                         frameId: null
                     };
-                    resolve({ success: true });
-                    break;
+                    return { success: true };
 
                 case 'POPUP_LOADED':
                     if (activePopup) {
                         // Store the popup frame ID
                         activePopup.frameId = sender.frameId;
-                        // Send initialization data back to the same frame
-                        browser.tabs.sendMessage(
-                            sender.tab.id,
-                            {
-                                type: 'INIT_POPUP',
-                                tabId: activePopup.tabId
-                            },
-                            { frameId: sender.frameId }
-                        ).catch(error => {
+                        try {
+                            // Send initialization data back to the same frame
+                            await browser.tabs.sendMessage(
+                                sender.tab.id,
+                                {
+                                    type: 'INIT_POPUP',
+                                    tabId: activePopup.tabId
+                                },
+                                { frameId: sender.frameId }
+                            );
+                            return { success: true };
+                        } catch (error) {
                             console.error('[Background] Error sending INIT_POPUP:', error);
-                        });
+                            return handleError(error);
+                        }
                     }
-                    resolve({ success: true });
-                    break;
+                    return { error: 'No active popup' };
 
                 case 'POPUP_READY':
                     if (activePopup && activePopup.tabId) {
                         // Notify content script that popup is ready
-                        sendToContent(activePopup.tabId, { type: 'POPUP_READY' });
+                        const response = await sendToContent(activePopup.tabId, { type: 'POPUP_READY' });
+                        return response || { success: true };
                     }
-                    resolve({ success: true });
-                    break;
+                    return { error: 'No active popup' };
 
                 case 'RENDER_CODE':
                     if (activePopup && activePopup.frameId) {
-                        // Forward render code message to popup frame
-                        browser.tabs.sendMessage(
-                            sender.tab.id,
-                            message,
-                            { frameId: activePopup.frameId }
-                        ).catch(error => {
+                        try {
+                            // Forward render code message to popup frame
+                            await browser.tabs.sendMessage(
+                                sender.tab.id,
+                                message,
+                                { frameId: activePopup.frameId }
+                            );
+                            return { success: true };
+                        } catch (error) {
                             console.error('[Background] Error forwarding RENDER_CODE:', error);
-                        });
+                            return handleError(error);
+                        }
                     }
-                    resolve({ success: true });
-                    break;
+                    return { error: 'No active popup frame' };
 
                 case 'RENDER_COMPLETE':
                     if (activePopup && activePopup.tabId) {
-                        sendToContent(activePopup.tabId, { type: 'RENDER_COMPLETE' });
+                        const response = await sendToContent(activePopup.tabId, { type: 'RENDER_COMPLETE' });
+                        return response || { success: true };
                     }
-                    resolve({ success: true });
-                    break;
+                    return { error: 'No active popup' };
 
                 case 'RENDER_ERROR':
                     if (activePopup && activePopup.tabId) {
-                        sendToContent(activePopup.tabId, {
+                        const response = await sendToContent(activePopup.tabId, {
                             type: 'RENDER_ERROR',
                             error: message.error
                         });
+                        return response || { success: true };
                     }
-                    resolve({ success: true });
-                    break;
+                    return { error: 'No active popup' };
 
                 case 'POPUP_CLOSED':
                     if (activePopup && activePopup.tabId) {
-                        sendToContent(activePopup.tabId, { type: 'POPUP_CLOSED' });
+                        const response = await sendToContent(activePopup.tabId, { type: 'POPUP_CLOSED' });
                         activePopup = null;
+                        return response || { success: true };
                     }
-                    resolve({ success: true });
-                    break;
+                    activePopup = null;
+                    return { success: true };
 
                 default:
-                    console.warn('[Background] Unknown message type:', message.type);
-                    resolve({ error: 'Unknown message type' });
+                    return { error: 'Unknown message type' };
             }
         } catch (error) {
             console.error('[Background] Error handling message:', error);
-            resolve({ error: error.message });
+            return handleError(error);
         }
-    });
+    })());
 });
 
 // Clean up when extension is unloaded
-browser.runtime.onSuspend.addListener(() => {
+browser.runtime.onSuspend.addListener(async () => {
     if (activePopup && activePopup.tabId) {
-        sendToContent(activePopup.tabId, { type: 'POPUP_CLOSED' });
+        await sendToContent(activePopup.tabId, { type: 'POPUP_CLOSED' });
     }
     activePopup = null;
-    pendingMessages.clear();
 });

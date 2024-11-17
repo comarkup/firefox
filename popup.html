@@ -40,6 +40,9 @@
             padding: 10px 15px;
             background: #f8f9fa;
             border-bottom: 1px solid #eee;
+            height: 40px;
+            min-height: 40px;
+            box-sizing: border-box;
         }
 
         .editor-header span, .preview-header span {
@@ -72,39 +75,72 @@
 
         .code-editor {
             flex: 1;
-            overflow: auto;
+            overflow: hidden;
             position: relative;
             background: #1e1e1e;
-            padding: 15px 0;
             font-family: 'Fira Code', 'Consolas', monospace;
         }
 
-        .code-editor pre {
-            margin: 0;
-            padding: 0 15px 0 50px;
-            min-height: 100%;
+        .code-editor-textarea {
+            position: absolute;
+            top: 0;
+            left: 40px;
+            width: calc(100% - 40px);
+            height: 100%;
+            padding: 15px;
+            border: none;
+            background: transparent;
+            color: #d4d4d4;
+            font-family: inherit;
+            font-size: 14px;
+            line-height: 1.5;
+            resize: none;
+            outline: none;
+            white-space: pre;
+            overflow: auto;
+            tab-size: 4;
+            z-index: 2;
         }
 
-        .code-editor code {
+        .code-editor-highlighting {
+            position: absolute;
+            top: 0;
+            left: 40px;
+            width: calc(100% - 40px);
+            height: 100%;
+            padding: 15px;
+            pointer-events: none;
+            white-space: pre;
+            font-size: 14px;
+            line-height: 1.5;
+            z-index: 1;
+            margin: 0;
+        }
+
+        .code-editor-highlighting code {
             font-family: inherit;
             color: #d4d4d4;
-            line-height: 1.5;
-            font-size: 14px;
         }
 
         .line-numbers {
             position: absolute;
             left: 0;
-            top: 15px;
-            bottom: 15px;
+            top: 0;
             width: 40px;
-            text-align: right;
-            padding: 0 8px;
+            height: 100%;
+            padding: 15px 0;
+            background: #1e1e1e;
+            border-right: 1px solid #404040;
             color: #858585;
             font-size: 14px;
             line-height: 1.5;
-            border-right: 1px solid #404040;
+            text-align: right;
             user-select: none;
+            z-index: 3;
+        }
+
+        .line-number {
+            padding-right: 8px;
         }
 
         #root {
@@ -135,16 +171,26 @@
         }
 
         ::-webkit-scrollbar-track {
-            background: #f1f1f1;
+            background: #1e1e1e;
         }
 
         ::-webkit-scrollbar-thumb {
-            background: #888;
+            background: #404040;
             border-radius: 5px;
         }
 
         ::-webkit-scrollbar-thumb:hover {
-            background: #555;
+            background: #4a4a4a;
+        }
+
+        /* Error display */
+        .preview-error {
+            color: #dc3545;
+            padding: 20px;
+            border: 1px solid #dc3545;
+            border-radius: 4px;
+            margin: 20px;
+            background: rgba(220, 53, 69, 0.1);
         }
     </style>
 </head>
@@ -165,6 +211,7 @@
             <div id="root"></div>
         </div>
     </div>
+    <script src="detector.js"></script>
     <script src="popup.js"></script>
 </body>
 </html>

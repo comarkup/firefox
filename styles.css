@@ -1,5 +1,6 @@
 /* Zaktualizowany CSS */
 .comarkup-framework-badge {
+    opacity: 0.8;
     position: absolute;
     top: 5px;
     left: 5px;
@@ -10,14 +11,13 @@
     display: flex;
     align-items: center;
     gap: 12px;
-    background-color: rgba(0, 0, 0, 0.7);
+    background-color: rgba(0, 0, 0, 0.8);
     backdrop-filter: blur(4px);
     transition: all 0.3s ease;
     min-width: 140px;
 }
 
 .comarkup-framework-badge .framework-name {
-    opacity: 0.7;
     min-width: 60px;
 }
 
@@ -32,7 +32,7 @@
     width: 24px;
     height: 24px;
     cursor: pointer;
-    opacity: 0.7;
+    opacity: 0.8;
     transition: opacity 0.2s ease;
     display: flex;
     align-items: center;
