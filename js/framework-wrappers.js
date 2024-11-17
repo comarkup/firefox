@@ -9,6 +9,8 @@ export function getFrameworkWrapper(framework, code) {
             return createReactWrapper(code);
         case 'vue':
             return createVueWrapper(code);
+        case 'angular':
+            return createAngularWrapper(code);
         case 'vanilla':
             return createVanillaWrapper(code);
         default:
@@ -52,6 +54,57 @@ function createReactWrapper(code) {
             }
         `;
     }
+}
+
+function createAngularWrapper(code) {
+    // Extract component metadata and class definition
+    const componentMatch = code.match(/@Component\(\{([\s\S]*?)\}\)\s*export\s*class\s*(\w+)([\s\S]*)/);
+    if (!componentMatch) {
+        throw new Error('Invalid Angular component format');
+    }
+
+    const [_, metadata, className, classBody] = componentMatch;
+
+    // Clean up the metadata
+    const cleanMetadata = metadata
+        .replace(/(['"])?([a-zA-Z0-9_]+)(['"])?:/g, '"$2":')  // Ensure property names are quoted
+        .replace(/`/g, "'")  // Replace template literals with single quotes
+        .replace(/\${/g, "' + ")  // Handle string interpolation
+        .replace(/}/g, " + '")  // Handle string interpolation
+        .trim();
+
+    return `
+        try {
+            // Define the component
+            const ${className} = Component({${cleanMetadata}})(
+                class {
+                    constructor() {
+                        ${classBody.replace('export class CounterComponent', '')}
+                    }
+                }
+            );
+
+            // Create the module
+            const AppModule = NgModule({
+                imports: [BrowserModule],
+                declarations: [${className}],
+                bootstrap: [${className}]
+            })(class {});
+
+            // Bootstrap the application
+            platformBrowserDynamic()
+                .bootstrapModule(AppModule)
+                .catch(err => {
+                    console.error('[Angular Error]:', err);
+                    const container = document.querySelector('.preview-content');
+                    container.innerHTML = '<div style="color: red; padding: 20px;">Error: ' + err.message + '</div>';
+                });
+        } catch (error) {
+            console.error('[Angular Error]:', error);
+            const container = document.querySelector('.preview-content');
+            container.innerHTML = '<div style="color: red; padding: 20px;">Error: ' + error.message + '</div>';
+        }
+    `;
 }
 
 function createVueWrapper(code) {
@@ -127,6 +180,14 @@ export async function loadFrameworkScripts(framework) {
                 throw error;
             }
         }
+    }
+
+    // For Angular, we need to ensure global objects are available
+    if (framework === 'angular') {
+        window.Component = ng.core.Component;
+        window.NgModule = ng.core.NgModule;
+        window.BrowserModule = ng.platformBrowser.BrowserModule;
+        window.platformBrowserDynamic = ng.platformBrowserDynamic.platformBrowserDynamic;
     }
 }
 

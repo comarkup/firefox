@@ -1,5 +1,6 @@
 firefox-react-renderer
 # Logs
+.idea
 logs
 *.log
 npm-debug.log*

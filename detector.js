@@ -1,6 +1,6 @@
 // detector.js
 const FrameworkDetector = {
-    // Konfiguracja frameworków
+    // Framework configuration
     frameworks: {
         react: {
             name: 'React',
@@ -19,9 +19,9 @@ const FrameworkDetector = {
                 'className='
             ],
             scripts: [
-                'https://unpkg.com/react@17/umd/react.development.js',
-                'https://unpkg.com/react-dom@17/umd/react-dom.development.js',
-                'https://unpkg.com/babel-standalone@6/babel.min.js'
+                'https://unpkg.com/react@17.0.2/umd/react.development.js',
+                'https://unpkg.com/react-dom@17.0.2/umd/react-dom.development.js',
+                'https://unpkg.com/babel-standalone@6.26.0/babel.min.js'
             ],
             fileExtensions: ['.jsx', '.tsx'],
             weight: {
@@ -32,6 +32,44 @@ const FrameworkDetector = {
                 '=>': 2,
                 'props': 3,
                 'className=': 4
+            }
+        },
+
+        angular: {
+            name: 'Angular',
+            color: '#dd1b16',
+            textColor: '#ffffff',
+            patterns: [
+                '@Component',
+                '@Injectable',
+                'ngOnInit',
+                'ngOnDestroy',
+                '[(ngModel)]',
+                '*ngFor',
+                '*ngIf',
+                '@Input()',
+                '@Output()',
+                'EventEmitter',
+                'constructor(',
+                'template:',
+                'selector:',
+                'export class'
+            ],
+            scripts: [
+                'https://unpkg.com/@angular/core@12.2.16/bundles/core.umd.js',
+                'https://unpkg.com/@angular/common@12.2.16/bundles/common.umd.js',
+                'https://unpkg.com/@angular/platform-browser-dynamic@12.2.16/bundles/platform-browser-dynamic.umd.js'
+            ],
+            fileExtensions: ['.ts', '.component.ts'],
+            weight: {
+                '@Component': 10,
+                '@Injectable': 9,
+                'ngOnInit': 8,
+                '*ng': 7,
+                '@Input()': 6,
+                'template:': 8,
+                'selector:': 8,
+                'export class': 5
             }
         },
 
@@ -56,7 +94,7 @@ const FrameworkDetector = {
                 'data()'
             ],
             scripts: [
-                'https://unpkg.com/vue@3/dist/vue.global.js'
+                'https://unpkg.com/vue@3.2.31/dist/vue.global.js'
             ],
             fileExtensions: ['.vue'],
             weight: {
@@ -65,37 +103,6 @@ const FrameworkDetector = {
                 'v-': 7,
                 'setup()': 6,
                 'ref,': 5
-            }
-        },
-
-        angular: {
-            name: 'Angular',
-            color: '#dd1b16',
-            textColor: '#ffffff',
-            patterns: [
-                '@Component',
-                '@Injectable',
-                'ngOnInit',
-                'ngOnDestroy',
-                '[(ngModel)]',
-                '*ngFor',
-                '*ngIf',
-                '@Input()',
-                '@Output()',
-                'EventEmitter',
-                'constructor('
-            ],
-            scripts: [
-                'https://unpkg.com/@angular/core@12',
-                'https://unpkg.com/@angular/platform-browser-dynamic@12'
-            ],
-            fileExtensions: ['.ts', '.component.ts'],
-            weight: {
-                '@Component': 10,
-                '@Injectable': 9,
-                'ngOnInit': 8,
-                '*ng': 7,
-                '@Input()': 6
             }
         },
 
@@ -158,9 +165,14 @@ const FrameworkDetector = {
         }
     },
 
-    // Metody detekcji
+    // Detection methods
     detect(code) {
         if (!code) return 'vanilla';
+
+        // Special case for Angular - check for @Component decorator
+        if (code.includes('@Component') && code.includes('export class')) {
+            return 'angular';
+        }
 
         const scores = this.calculateFrameworkScores(code);
         const [detectedFramework] = Object.entries(scores)
@@ -183,14 +195,14 @@ const FrameworkDetector = {
     calculateFrameworkScore(code, config) {
         let score = 0;
 
-        // Sprawdź każdy wzorzec
+        // Check each pattern
         for (const pattern of config.patterns) {
             if (code.includes(pattern)) {
                 score += config.weight[pattern] || 1;
             }
         }
 
-        // Dodatkowe punkty za rozszerzenie pliku
+        // Extra points for file extension
         if (config.fileExtensions.some(ext => code.includes(ext))) {
             score += 5;
         }
@@ -205,21 +217,13 @@ const FrameworkDetector = {
             .trim();
     },
 
-    // Metody pomocnicze
+    // Helper methods
     getFrameworkConfig(framework) {
         return this.frameworks[framework] || this.frameworks.vanilla;
     },
 
     isFrameworkAvailable(framework) {
-        const checks = {
-            'react': () => typeof React !== 'undefined' && typeof ReactDOM !== 'undefined',
-            'vue': () => typeof Vue !== 'undefined',
-            'angular': () => typeof ng !== 'undefined',
-            'svelte': () => typeof svelte !== 'undefined',
-            'vanilla': () => true
-        };
-
-        return checks[framework] ? checks[framework]() : false;
+        return true; // We'll load scripts dynamically
     },
 
     getRequiredScripts(framework) {
@@ -227,7 +231,7 @@ const FrameworkDetector = {
         return config.scripts || [];
     },
 
-    // Analiza kodu
+    // Code analysis
     analyzeCode(code) {
         const framework = this.detect(code);
         const config = this.getFrameworkConfig(framework);
@@ -244,37 +248,10 @@ const FrameworkDetector = {
 
     detectPatterns(code, patterns) {
         return patterns.filter(pattern => code.includes(pattern));
-    },
-
-    // Walidacja kodu
-    validateCode(code, framework) {
-        const config = this.getFrameworkConfig(framework);
-        const requiredPatterns = config.patterns.filter(pattern =>
-            config.weight[pattern] >= 8
-        );
-
-        return {
-            isValid: requiredPatterns.some(pattern => code.includes(pattern)),
-            missingPatterns: requiredPatterns.filter(pattern => !code.includes(pattern))
-        };
-    },
-
-    // Sugestie frameworków
-    suggestFramework(code) {
-        const scores = this.calculateFrameworkScores(code);
-        const sortedFrameworks = Object.entries(scores)
-            .sort(([,a], [,b]) => b - a)
-            .map(([framework, score]) => ({
-                framework,
-                score,
-                confidence: Math.min(score / 10, 1) * 100
-            }));
-
-        return sortedFrameworks;
     }
 };
 
-// Export dla środowisk modułowych
+// Export for module environments
 if (typeof module !== 'undefined' && module.exports) {
     module.exports = FrameworkDetector;
 }

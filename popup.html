@@ -3,7 +3,7 @@
 <head>
     <title>CoMarkup Preview</title>
     <meta charset="UTF-8">
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self' https://unpkg.com; script-src 'self' 'unsafe-eval' https://unpkg.com; style-src 'self' 'unsafe-inline'">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self' https://unpkg.com; script-src 'self' 'unsafe-eval' 'wasm-unsafe-eval' https://unpkg.com; style-src 'self' 'unsafe-inline'; connect-src 'self' https://unpkg.com">
     <style>
         body {
             margin: 0;
@@ -114,6 +114,17 @@
             margin: 20px;
             background: rgba(220, 53, 69, 0.1);
         }
+
+        /* Framework-specific styles */
+        .react-container button {
+            margin: 5px;
+            padding: 8px 16px;
+        }
+
+        .vue-container button {
+            margin: 5px;
+            padding: 8px 16px;
+        }
     </style>
 </head>
 <body>
@@ -133,7 +144,7 @@
             <div id="root"></div>
         </div>
     </div>
-    <script src="detector.js"></script>
-    <script type="module" src="js/popup-core.js"></script>
+    <script src="detector.js" crossorigin="anonymous"></script>
+    <script type="module" src="js/popup-core.js" crossorigin="anonymous"></script>
 </body>
 </html>

@@ -39,15 +39,43 @@ export async function processCode({ code, framework, originalContent }) {
 
         console.log('[Popup] Preparing to render code');
         DebugLogger.updateStep(STEPS.RENDERING, 'pending');
-        clearPreview();
 
+        // Prepare the preview container
+        if (framework === 'angular') {
+            // For Angular, extract the selector from the component decorator
+            const selectorMatch = code.match(/selector:\s*['"]([^'"]+)['"]/);
+            if (selectorMatch) {
+                const selector = selectorMatch[1];
+                const container = document.querySelector('.preview-content');
+                if (container) {
+                    container.innerHTML = `<${selector}></${selector}>`;
+                }
+            }
+        } else {
+            clearPreview();
+        }
+
+        // Get the wrapped code
         const wrappedCode = getFrameworkWrapper(framework, code);
         console.log('[Popup] Wrapped code:', wrappedCode);
 
+        // Handle different frameworks
         if (framework === 'react') {
             console.log('[Popup] Transforming React code with Babel');
             const transformed = Babel.transform(wrappedCode, { presets: ['react'] }).code;
             eval(transformed);
+        } else if (framework === 'angular') {
+            // For Angular, we need to ensure all dependencies are properly initialized
+            try {
+                // Create a new script element to ensure proper execution context
+                const scriptElement = document.createElement('script');
+                scriptElement.textContent = wrappedCode;
+                document.head.appendChild(scriptElement);
+                document.head.removeChild(scriptElement);
+            } catch (error) {
+                console.error('[Angular Error]:', error);
+                throw error;
+            }
         } else {
             eval(wrappedCode);
         }

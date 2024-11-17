@@ -32,13 +32,13 @@
   "web_accessible_resources": [
     "popup.html",
     "popup.css",
-    "popup.js",
+    "js/*",
     "detector.js",
     "frameworks/*",
     "img/*",
     "comarkup-logo.svg"
   ],
-  "content_security_policy": "script-src 'self' 'unsafe-eval' https://unpkg.com blob:; object-src 'self'; connect-src 'self' https://unpkg.com",
+  "content_security_policy": "script-src 'self' 'unsafe-eval' 'wasm-unsafe-eval' https://unpkg.com blob:; object-src 'self'; connect-src 'self' https://unpkg.com; style-src 'self' 'unsafe-inline'",
   "browser_specific_settings": {
     "gecko": {
       "id": "comarkup@example.com",
