@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CoMarkup Demo</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f5f7fb;
+        }
+        .container {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .demo-buttons {
+            margin: 20px 0;
+            display: flex;
+            gap: 10px;
+        }
+        button {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 4px;
+            background: #2563eb;
+            color: white;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+        button:hover {
+            background: #1d4ed8;
+        }
+        pre {
+            background: #1e293b;
+            color: #e2e8f0;
+            padding: 15px;
+            border-radius: 6px;
+            overflow-x: auto;
+            position: relative;
+        }
+        code {
+            font-family: 'Courier New', Courier, monospace;
+        }
+        .content-container {
+            margin-top: 20px;
+            min-height: 200px;
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <div class="demo-buttons">
+        <button onclick="loadSimpleComponent()">Load Simple Component</button>
+        <button onclick="loadComplexComponent()">Load Complex Component</button>
+        <button onclick="loadMultipleComponents()">Load Multiple</button>
+        <button onclick="clearContent()">Clear</button>
+    </div>
+
+    <div id="content" class="content-container"></div>
+</div>
+
+<script>
+    const observer = new MutationObserver((mutations) => {
+        mutations.forEach((mutation) => {
+            if (mutation.addedNodes.length) {
+                checkForNewCodeBlocks();
+            }
+        });
+    });
+
+    observer.observe(document.body, {
+        childList: true,
+        subtree: true
+    });
+
+    function checkForNewCodeBlocks() {
+        const codeBlocks = document.querySelectorAll('pre code');
+        codeBlocks.forEach(block => {
+            if (!block.hasAttribute('data-comarkup-processed')) {
+                addRenderButton(block);
+                block.setAttribute('data-comarkup-processed', 'true');
+            }
+        });
+    }
+
+    function addRenderButton(codeBlock) {
+        const button = document.createElement('button');
+        button.textContent = 'Renderuj';
+        button.style.position = 'absolute';
+        button.style.top = '5px';
+        button.style.right = '5px';
+        button.onclick = () => renderCode(codeBlock);
+        codeBlock.parentElement.appendChild(button);
+    }
+
+    function renderCode(codeBlock) {
+        const code = codeBlock.textContent;
+        const popup = window.open('', 'React Preview', 'width=800,height=600');
+
+        popup.document.write(`
+                <!DOCTYPE html>
+                <html>
+                <head>
+                    <title>React Preview</title>
+                    <script src="https://unpkg.com/react@17/umd/react.development.js"></script>
+<script src="https://unpkg.com/react-dom@17/umd/react-dom.development.js"></script>
+<script src="https://unpkg.com/babel-standalone@6/babel.min.js"></script>
+<style>
+    body {
+        font-family: Arial, sans-serif;
+        padding: 20px;
+        background: #f5f7fb;
+    }
+    #root {
+        background: white;
+        border-radius: 8px;
+        padding: 20px;
+        margin-bottom: 20px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    .controls {
+        display: flex;
+        gap: 10px;
+    }
+    button {
+        padding: 8px 16px;
+        border: none;
+        border-radius: 4px;
+        background: #2563eb;
+        color: white;
+        cursor: pointer;
+    }
+    button:hover {
+        background: #1d4ed8;
+    }
+</style>
+</head>
+<body>
+<div id="root"></div>
+<div class="controls">
+    <button onclick="copyToClipboard()">Copy to Clipboard</button>
+    <button onclick="window.close()">Close</button>
+</div>
+
+<script type="text/babel">
+    // Wrapper component to handle the rendering
+    const App = () => {
+        try {
+            ${code}
+        } catch (error) {
+            return <div style={{color: 'red'}}>Error: {error.message}</div>;
+        }
+    };
+
+    // Render the app
+    ReactDOM.render(<App />, document.getElementById('root'));
+</script>
+
+<script>
+    function copyToClipboard() {
+        const resultHtml = document.getElementById('root').innerHTML;
+        navigator.clipboard.writeText(resultHtml)
+            .then(() => alert('Copied to clipboard!'))
+            .catch(err => alert('Error copying: ' + err));
+    }
+</script>
+</body>
+</html>
+`);
+}
+
+function loadSimpleComponent() {
+const content = `
+<pre><code>const Welcome = () => {
+    return <h1>Hello CoMarkup!</h1>;
+};
+
+return <Welcome />;
+</code></pre>`;
+document.getElementById('content').innerHTML = content;
+}
+
+function loadComplexComponent() {
+const content = `
+<pre><code>const Counter = () => {
+    const [count, setCount] = React.useState(0);
+
+    return (
+        <div style={{textAlign: 'center', padding: '20px'}}>
+            <h2>Counter: {count}</h2>
+            <button
+                    onClick={() => setCount(count + 1)}
+                style={{
+                    padding: '10px 20px',
+                    background: '#2563eb',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '4px',
+                    cursor: 'pointer'
+                }}
+            >
+                Increment
+    </button>
+    </div>
+    );
+};
+
+return <Counter />;
+</code></pre>`;
+document.getElementById('content').innerHTML = content;
+}
+
+function loadMultipleComponents() {
+const content = `
+<pre><code>const Button = ({text}) => {
+    return (
+        <button style={{
+                margin: '5px',
+            padding: '8px 16px',
+            border: 'none',
+            borderRadius: '4px',
+            background: '#2563eb',
+            color: 'white',
+            cursor: 'pointer'
+        }}>
+            {text}
+    </button>
+    );
+};
+
+const ButtonGroup = () => {
+    return (
+        <div>
+            <Button text="First" />
+            <Button text="Second" />
+            <Button text="Third" />
+        </div>
+    );
+};
+
+return <ButtonGroup />;
+</code></pre>`;
+document.getElementById('content').innerHTML = content;
+}
+
+function clearContent() {
+document.getElementById('content').innerHTML = '';
+}
+
+// Initial check for code blocks
+checkForNewCodeBlocks();
+</script>
+</body>
+</html>

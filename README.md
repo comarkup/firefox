@@ -1,5 +1,40 @@
 # firefox
 
+CoMarkup to platforma do współpracy nad kodem w czasie rzeczywistym, umożliwiająca natychmiastowe renderowanie i podgląd zmian w różnych formatach znaczników (Markdown, HTML, React).
+Kluczowe funkcje:
+
+
+🚀 Natychmiastowe renderowanie kodu
+👥 Współpraca w czasie rzeczywistym
+🔄 Synchronizacja z Git
+📱 Responsywny podgląd
+🎨 Własne motywy
+🔌 Rozszerzenia przeglądarek
+
+## Use cases
+
+A. Zespoły Developerskie
+- Współpraca nad dokumentacją
+- Code review w czasie rzeczywistym
+- Szybkie prototypowanie komponentów
+
+B. Twórcy Treści
+- Pisanie i edycja dokumentacji
+- Tworzenie blogów technicznych
+- Przygotowywanie tutoriali
+
+C. Firmy
+- Dokumentacja produktowa
+- Wewnętrzne wiki
+- Materiały szkoleniowe
+
+D. Edukacja
+- Interaktywne materiały
+- Współpraca student-nauczyciel
+- Prezentacje kodu
+
+## About plugin
+
 Firefox plugin zawiera następujące funkcjonalności:
 
 1. Automatyczna detekcja kodu React:
@@ -16,6 +51,7 @@ Firefox plugin zawiera następujące funkcjonalności:
     - Możliwość kopiowania wyrenderowanego HTML do schowka
     - Obsługa błędów renderowania
     - Przycisk zamykania popupu
+
 
 ## Instalacja
 
@@ -99,4 +135,31 @@ Wskazówki dla szybszej akceptacji:
 4. Jasno opisz wszystkie wymagane uprawnienia
 5. Dołącz szczegółowe instrukcje testowania
 6. Szybko odpowiadaj na pytania recenzentów
+
+
+
+
+## Jak działa
+
+1. **Wykrywa dynamicznie dodawany kod React:**
+- Używa MutationObserver do monitorowania zmian w DOM
+- Automatycznie dodaje przycisk "Renderuj" do nowych bloków kodu
+- Obsługuje wielokrotne dodawanie/usuwanie kodu
+
+2. **Zawiera przykładowe komponenty:**
+- Simple Component: podstawowy komponent React
+- Complex Component: komponent z hooked (useState)
+- Multiple Components: kilka komponentów na stronie
+
+3. **Funkcje demonstracyjne:**
+- Dodawanie różnych typów komponentów
+- Czyszczenie zawartości
+- Renderowanie w popup
+- Kopiowanie do schowka
+
+4. **Obsługa błędów:**
+- Try-catch w renderowaniu
+- Wyświetlanie błędów w popup
+- Zabezpieczenie przed wielokrotnym dodawaniem przycisków
+
 
